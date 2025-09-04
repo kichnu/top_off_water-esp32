@@ -1,0 +1,296 @@
+# ESP32-C3 Automated Water Top-Off System 🌱
+
+An intelligent, automated water management system built on ESP32-C3, featuring advanced sensor algorithms, web-based control, and cloud logging capabilities.
+
+![ESP32-C3](https://img.shields.io/badge/ESP32-C3-blue)
+![Platform](https://img.shields.io/badge/PlatformIO-Compatible-orange)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Build](https://img.shields.io/badge/Build-Passing-brightgreen)
+
+## 🚀 Features
+
+### Core Functionality
+- **Intelligent Water Level Detection** - Dual float sensor system with advanced timing algorithms
+- **Automated Pump Control** - Precise volume delivery with configurable flow rates
+- **Algorithm-Driven Decision Making** - Smart timing analysis for optimal water management
+- **Error Detection & Recovery** - Built-in safety mechanisms and failure handling
+
+### Web Interface
+- **Professional Dashboard** - Real-time monitoring and control
+- **Mobile-Responsive Design** - Works on desktop, tablet, and mobile
+- **Secure Authentication** - Password protection with session management
+- **Rate Limiting** - Protection against abuse and unauthorized access
+
+### Data Management
+- **FRAM Storage** - Non-volatile data persistence for settings and cycle history
+- **VPS Cloud Logging** - Remote monitoring and data analytics
+- **Statistical Tracking** - Error counts, performance metrics, and trends
+- **Real-Time Clock Integration** - Accurate timestamping with DS3231 or internal RTC fallback
+
+### Safety & Security
+- **IP Whitelisting** - Restrict access to authorized devices
+- **Session Management** - Secure token-based authentication
+- **Global Pump Control** - Emergency disable with auto-recovery
+- **Comprehensive Logging** - Debug and audit trail capabilities
+
+## 📋 Hardware Requirements
+
+### Minimum Requirements
+- **ESP32-C3** (Seeed Xiao ESP32-C3 recommended)
+- **2x Float Sensors** (NC type with pull-up resistors)
+- **Water Pump** with relay control (12V recommended)
+- **Power Supply** (5V/2A minimum)
+
+### Recommended Add-ons
+- **DS3231 RTC Module** (I2C) for accurate timekeeping
+- **FRAM I2C Memory** (32KB) for data persistence
+- **Status LED** for visual feedback
+- **Reset Button** for error recovery
+
+### Pin Configuration (Seeed Xiao ESP32-C3)
+```
+Pin 2:  Pump Relay Control
+Pin 3:  Water Sensor 1 (Float Switch)
+Pin 4:  Water Sensor 2 (Float Switch) 
+Pin 5:  Status LED
+Pin 6:  RTC/FRAM SDA (I2C)
+Pin 7:  RTC/FRAM SCL (I2C)
+Pin 9:  Error Signal Output
+Pin 10: Reset Button Input
+```
+
+## 🛠️ Installation
+
+### Prerequisites
+- [PlatformIO](https://platformio.org/) installed
+- [Git](https://git-scm.com/) for version control
+- Basic electronics knowledge for hardware assembly
+
+### 1. Clone Repository
+```bash
+git clone https://github.com/yourusername/esp32-water-system.git
+cd esp32-water-system
+```
+
+### 2. Configure Settings
+Edit `src/config/config.cpp`:
+```cpp
+// WiFi Credentials
+const char* WIFI_SSID = "YourWiFiName";
+const char* WIFI_PASSWORD = "YourWiFiPassword";
+
+// Network Configuration
+const IPAddress STATIC_IP(192, 168, 0, 164);
+const IPAddress GATEWAY(192, 168, 0, 1);
+
+// VPS Logging (Optional)
+const char* VPS_URL = "https://your-server.com/api/water-events";
+const char* VPS_AUTH_TOKEN = "your-auth-token";
+```
+
+### 3. Build & Upload
+```bash
+# Build project
+pio run
+
+# Upload to ESP32-C3
+pio run --target upload
+
+# Monitor serial output
+pio device monitor
+```
+
+### 4. Access Web Interface
+Once connected to WiFi, access the dashboard at:
+```
+http://192.168.0.164
+```
+Default password: `password` (change immediately!)
+
+## 🔧 Configuration
+
+### Algorithm Parameters
+Located in `src/algorithm/algorithm_config.h`:
+
+```cpp
+#define TIME_TO_PUMP            450    // Seconds from trigger to pump start
+#define TIME_GAP_1_MAX          300    // Max wait for second sensor (Mode 1)
+#define TIME_GAP_2_MAX          300    // Max wait for second sensor (Mode 2)
+#define THRESHOLD_1             180    // Threshold for TIME_GAP_1 evaluation
+#define THRESHOLD_2             60     // Threshold for TIME_GAP_2 evaluation
+#define WATER_TRIGGER_MAX_TIME  120    // Max time for sensor response after pump
+#define PUMP_MAX_ATTEMPTS       3      // Max pump retry attempts
+#define SINGLE_DOSE_VOLUME      100    // ml per pump cycle
+#define FILL_WATER_MAX          2400   // ml maximum daily volume
+```
+
+### Pump Settings
+Configurable via web interface:
+- **Volume per Second**: 0.1 - 20.0 ml/s
+- **Normal Cycle Duration**: Default 15 seconds
+- **Extended Cycle Duration**: Default 30 seconds (calibration)
+
+## 📊 Algorithm Operation
+
+The system uses a sophisticated two-phase algorithm:
+
+### Phase 1: Water Level Detection
+1. **TRIGGER**: One or both sensors activate (water level low)
+2. **TIME_GAP_1**: Measure time between sensor activations
+3. **DELAY**: Wait `TIME_TO_PUMP` seconds for water settling
+
+### Phase 2: Automated Pumping
+1. **PUMP**: Activate pump for calculated duration
+2. **VERIFY**: Monitor sensors for water level rise
+3. **TIME_GAP_2**: Measure sensor deactivation timing (if applicable)
+4. **RETRY**: Up to 3 attempts if sensors don't respond
+
+### Error Conditions
+- **ERR1**: Daily volume limit exceeded (`FILL_WATER_MAX`)
+- **ERR2**: Pump failure (3 failed attempts)
+- **ERR0**: Combined errors
+
+## 🌐 API Endpoints
+
+### Status Information
+```bash
+GET /api/status
+# Returns system status, sensor readings, pump state, etc.
+```
+
+### Pump Control
+```bash
+POST /api/pump/normal     # Start normal pump cycle
+POST /api/pump/extended   # Start extended cycle (calibration)
+POST /api/pump/stop       # Emergency stop
+```
+
+### Settings Management
+```bash
+GET  /api/pump-settings   # Get current settings
+POST /api/pump-settings   # Update pump parameters
+GET  /api/pump-toggle     # Get pump global state
+POST /api/pump-toggle     # Toggle global pump enable/disable
+```
+
+### Statistics
+```bash
+GET  /api/get-statistics    # Get error statistics
+POST /api/reset-statistics  # Reset error counters
+```
+
+## 📈 Monitoring & Analytics
+
+### Local Data
+- **FRAM Storage**: Last 200 pump cycles (14 days typical)
+- **Error Statistics**: Gap1, Gap2, Water trigger failure counts
+- **Daily Volume Tracking**: Automatic reset every 24 hours
+
+### Cloud Integration
+Optional VPS logging includes:
+- Pump cycle completion events
+- Volume delivered and timing data
+- Algorithm performance metrics
+- Error statistics and trends
+- System health status
+
+### Data Format
+```json
+{
+  "device_id": "ESP32C3_WaterPump_001",
+  "timestamp": "2024-01-15 14:30:00",
+  "event_type": "AUTO_CYCLE_COMPLETE",
+  "volume_ml": 150,
+  "time_gap_1": 45,
+  "time_gap_2": 22,
+  "water_trigger_time": 8,
+  "gap1_fail_sum": 3,
+  "gap2_fail_sum": 1,
+  "water_fail_sum": 0
+}
+```
+
+## 🛡️ Security Features
+
+- **Password Authentication**: SHA-256 hashed passwords
+- **Session Management**: Token-based with configurable timeout
+- **Rate Limiting**: Prevents brute force attacks
+- **IP Filtering**: Whitelist trusted devices
+- **Request Throttling**: Configurable limits per IP
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**WiFi Connection Failed**
+- Verify SSID/password in `config.cpp`
+- Check static IP conflicts
+- Monitor serial output for details
+
+**Sensors Not Responding**
+- Verify pull-up resistors on sensor pins
+- Check sensor wiring (NC/NO configuration)
+- Test sensor continuity with multimeter
+
+**Pump Not Activating**
+- Check global pump state (may be disabled)
+- Verify relay wiring and power supply
+- Check daily volume limits
+
+**Web Interface Inaccessible**
+- Confirm ESP32 is connected to WiFi
+- Verify IP address in serial monitor
+- Check firewall settings
+
+### Debug Mode
+Enable detailed logging in `src/config/config.h`:
+```cpp
+#define ENABLE_FULL_LOGGING true
+#define ENABLE_SERIAL_DEBUG true
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Development Setup
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 👥 Authors & Acknowledgments
+
+- **Primary Developer** - System architecture and algorithm development
+- **Contributors** - See [Contributors](https://github.com/yourusername/esp32-water-system/contributors)
+
+### Special Thanks
+- Arduino/ESP32 community for excellent libraries
+- PlatformIO team for the development platform
+- Adafruit for hardware libraries and documentation
+
+## 📚 Documentation
+
+- [Hardware Assembly Guide](docs/hardware-setup.md)
+- [Algorithm Documentation](docs/algorithm-details.md)
+- [API Reference](docs/api-reference.md)
+- [Troubleshooting Guide](docs/troubleshooting.md)
+
+## 🔄 Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history and updates.
+
+## 📞 Support
+
+- 🐛 **Bug Reports**: [Issues](https://github.com/yourusername/esp32-water-system/issues)
+- 💡 **Feature Requests**: [Discussions](https://github.com/yourusername/esp32-water-system/discussions)
+- 📧 **Contact**: your-email@domain.com
+
+---
+
+⭐ **Star this repository if it helped you!** ⭐
