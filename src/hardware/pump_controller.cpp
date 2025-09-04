@@ -1,5 +1,5 @@
 #include "pump_controller.h"
-#include "../config/hardware_pins.h"
+#include "../hardware/hardware_pins.h"
 #include "../config/config.h"
 #include "../network/vps_logger.h"
 #include "../hardware/rtc_controller.h"

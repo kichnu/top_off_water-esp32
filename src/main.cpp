@@ -10,7 +10,7 @@
 #include "security/session_manager.h"
 #include "security/rate_limiter.h"
 #include "web/web_server.h"
-#include "config/hardware_pins.h"
+#include "hardware/hardware_pins.h"
 #include "hardware/fram_controller.h" 
 #include "algorithm/water_algorithm.h"  // <-- DODAJ
 #include "hardware/water_sensors.h"

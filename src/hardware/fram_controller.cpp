@@ -1,6 +1,6 @@
 #include "fram_controller.h"
 #include "../core/logging.h"
-#include "../config/hardware_pins.h"
+#include "../hardware/hardware_pins.h"
 #include <Wire.h>
 #include <Adafruit_FRAM_I2C.h>
 #include "../algorithm/algorithm_config.h"

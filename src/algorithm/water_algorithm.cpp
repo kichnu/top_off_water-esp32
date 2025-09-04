@@ -4,7 +4,7 @@
 #include "../hardware/water_sensors.h"
 // #include <algorithm>
 #include "../config/config.h"  // dla currentPumpSettings
-#include "../config/hardware_pins.h"
+#include "../hardware/hardware_pins.h"
 #include "algorithm_config.h" 
 #include "../hardware/fram_controller.h"  
 #include "../network/vps_logger.h"

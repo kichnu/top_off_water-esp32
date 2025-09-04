@@ -83,7 +83,7 @@
 
 
 #include "water_sensors.h"
-#include "../config/hardware_pins.h"
+#include "../hardware/hardware_pins.h"
 #include "../core/logging.h"
 #include "../algorithm/water_algorithm.h"
 #include "../algorithm/algorithm_config.h"
