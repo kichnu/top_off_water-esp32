@@ -26,8 +26,8 @@ const IPAddress ALLOWED_IPS[] = {
 };
 const int ALLOWED_IPS_COUNT = sizeof(ALLOWED_IPS) / sizeof(ALLOWED_IPS[0]);
 
-// const char* VPS_URL = "http://195.117.36.43:5000/api/water-events";
-const char* VPS_URL = "https://app.krzysztoforlinski.pl/api/water-events";
+const char* VPS_URL = "http://146.59.92.15:5000/api/water-events";
+// const char* VPS_URL = "https://app.krzysztoforlinski.pl/api/water-events";
 
 // const char* VPS_AUTH_TOKEN = "sha256:7b4f8a9c2e6d5a1b8f7e4c9a6d3b2f8e5c1a7b4f9e6d3c8a5b2f7e4c9a6d1b8f";;
 const char* VPS_AUTH_TOKEN = "212d4a3d708f907c2c782937f72daf28aa66d8e342d4ede15381b6d8295344d6";;

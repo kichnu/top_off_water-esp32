@@ -1,4 +1,25 @@
+// #include "html_pages.h"
+
+
+
+
+
+
+
+
+
 #include "html_pages.h"
+#include "../mode_config.h"
+
+#if ENABLE_WEB_SERVER
+
+// ... RESZTA KODU POZOSTAJE BEZ ZMIAN ...
+
+
+
+
+
+
 
 
 
@@ -543,8 +564,10 @@ const char* DASHBOARD_HTML = R"rawliteral(
                     console.error('Status update failed:', error);
                 });
 
-                loadStatistics(); 
-            // loadVolumePerSecond();        
+                if (Date.now() % 10000 < 2000) {  // <-- DODAJ TĘ LOGIKĘ
+                    loadStatistics(); 
+                }
+                    // loadVolumePerSecond();        
         }
         
         function formatUptime(milliseconds) {
@@ -620,7 +643,7 @@ const char* DASHBOARD_HTML = R"rawliteral(
         setInterval(loadPumpGlobalState, 30000);
 
         loadVolumePerSecond();
-        loadStatistics(); 
+        // loadStatistics(); 
     </script>
 </body>
 </html>
@@ -632,4 +655,7 @@ String getLoginHTML() {
 
 String getDashboardHTML() {
     return String(DASHBOARD_HTML);
-}
+} 
+
+
+#endif // ENABLE_WEB_SERVER

@@ -5,6 +5,8 @@
 #include <Adafruit_FRAM_I2C.h>
 #include "../algorithm/algorithm_config.h"
 
+#include "../crypto/fram_encryption.h"
+
 
 
 
@@ -63,6 +65,69 @@ bool initFRAM() {
     return true;
 }
 
+// bool verifyFRAM() {
+//     if (!framInitialized) return false;
+    
+//     // Check magic number
+//     uint32_t magic = 0;
+//     fram.read(FRAM_ADDR_MAGIC, (uint8_t*)&magic, 4);
+    
+//     if (magic != FRAM_MAGIC_NUMBER) {
+//         LOG_WARNING("FRAM magic number mismatch: 0x%08X", magic);
+//         return false;
+//     }
+    
+//     // Check version
+//     uint16_t version = 0;
+//     fram.read(FRAM_ADDR_VERSION, (uint8_t*)&version, 2);
+    
+//     if (version != FRAM_DATA_VERSION) {
+//     //     LOG_WARNING("FRAM version mismatch: %d", version);
+//     //     return false;
+//     // }
+//         // Auto-upgrade from version 1 to 2
+//         if (version == 0x0001) {
+//             LOG_INFO("Auto-upgrading FRAM from v1 to v2 (adding error stats)");
+                
+//                 // Initialize error stats with defaults
+//             ErrorStats defaultStats;
+//             defaultStats.gap1_fail_sum = 0;
+//             defaultStats.gap2_fail_sum = 0;
+//             defaultStats.water_fail_sum = 0;
+//             defaultStats.last_reset_timestamp = millis() / 1000;
+                
+//             saveErrorStatsToFRAM(defaultStats);
+                
+//                 // Update version
+//             uint16_t newVersion = FRAM_DATA_VERSION;
+//             fram.write(FRAM_ADDR_VERSION, (uint8_t*)&newVersion, 2);
+                
+//             LOG_INFO("FRAM upgraded to version %d", FRAM_DATA_VERSION);
+//             return true;
+//         }
+//         return false;
+//     }
+
+//     // Verify checksum
+//     uint8_t buffer[4];
+//     fram.read(FRAM_ADDR_VOLUME_ML, buffer, 4);
+//     uint16_t calculatedChecksum = calculateChecksum(buffer, 4);
+    
+//     uint16_t storedChecksum = 0;
+//     fram.read(FRAM_ADDR_CHECKSUM, (uint8_t*)&storedChecksum, 2);
+    
+//     if (calculatedChecksum != storedChecksum) {
+//         LOG_WARNING("FRAM checksum mismatch: stored=%d, calculated=%d", 
+//                     storedChecksum, calculatedChecksum);
+//         return false;
+//     }
+    
+//     LOG_INFO("FRAM verification successful");
+//     return true;
+// }
+
+
+
 bool verifyFRAM() {
     if (!framInitialized) return false;
     
@@ -80,14 +145,11 @@ bool verifyFRAM() {
     fram.read(FRAM_ADDR_VERSION, (uint8_t*)&version, 2);
     
     if (version != FRAM_DATA_VERSION) {
-    //     LOG_WARNING("FRAM version mismatch: %d", version);
-    //     return false;
-    // }
         // Auto-upgrade from version 1 to 2
         if (version == 0x0001) {
-            LOG_INFO("Auto-upgrading FRAM from v1 to v2 (adding error stats)");
+            LOG_INFO("Auto-upgrading FRAM from v1 to v2 (unified layout)");
                 
-                // Initialize error stats with defaults
+            // Initialize error stats with defaults
             ErrorStats defaultStats;
             defaultStats.gap1_fail_sum = 0;
             defaultStats.gap2_fail_sum = 0;
@@ -96,22 +158,18 @@ bool verifyFRAM() {
                 
             saveErrorStatsToFRAM(defaultStats);
                 
-                // Update version
+            // Update version
             uint16_t newVersion = FRAM_DATA_VERSION;
             fram.write(FRAM_ADDR_VERSION, (uint8_t*)&newVersion, 2);
                 
             LOG_INFO("FRAM upgraded to version %d", FRAM_DATA_VERSION);
             return true;
-
         }
 
         return false;
     }
-
-
-
     
-    // Verify checksum
+    // Verify ESP32 data checksum
     uint8_t buffer[4];
     fram.read(FRAM_ADDR_VOLUME_ML, buffer, 4);
     uint16_t calculatedChecksum = calculateChecksum(buffer, 4);
@@ -120,14 +178,19 @@ bool verifyFRAM() {
     fram.read(FRAM_ADDR_CHECKSUM, (uint8_t*)&storedChecksum, 2);
     
     if (calculatedChecksum != storedChecksum) {
-        LOG_WARNING("FRAM checksum mismatch: stored=%d, calculated=%d", 
+        LOG_WARNING("ESP32 data checksum mismatch: stored=%d, calculated=%d", 
                     storedChecksum, calculatedChecksum);
         return false;
     }
     
-    LOG_INFO("FRAM verification successful");
+    LOG_INFO("FRAM verification successful (unified layout v%d)", FRAM_DATA_VERSION);
     return true;
 }
+
+
+
+
+
 
 bool loadVolumeFromFRAM(float& volume) {
     if (!framInitialized) {
@@ -536,4 +599,85 @@ bool incrementErrorStats(uint8_t gap1_increment, uint8_t gap2_increment, uint8_t
     }
     
     return success;
+}
+
+
+// ===============================
+// FRAM CREDENTIALS SECTION  
+// (Shared with FRAM Programmer)
+// ===============================
+
+
+
+bool readCredentialsFromFRAM(FRAMCredentials& creds) {
+    if (!framInitialized) {
+        LOG_ERROR("FRAM not initialized for credentials read");
+        return false;
+    }
+    
+    // Read credentials structure from FRAM
+    fram.read(FRAM_CREDENTIALS_ADDR, (uint8_t*)&creds, sizeof(FRAMCredentials));
+    
+    LOG_INFO("Read credentials from FRAM at address 0x%04X", FRAM_CREDENTIALS_ADDR);
+    return true;
+}
+
+bool writeCredentialsToFRAM(const FRAMCredentials& creds) {
+    if (!framInitialized) {
+        LOG_ERROR("FRAM not initialized for credentials write");
+        return false;
+    }
+    
+    // Write credentials structure to FRAM
+    fram.write(FRAM_CREDENTIALS_ADDR, (uint8_t*)&creds, sizeof(FRAMCredentials));
+    
+    // Verify write by reading back
+    FRAMCredentials verify_creds;
+    fram.read(FRAM_CREDENTIALS_ADDR, (uint8_t*)&verify_creds, sizeof(FRAMCredentials));
+    
+    // Compare written data
+    if (memcmp(&creds, &verify_creds, sizeof(FRAMCredentials)) != 0) {
+        LOG_ERROR("FRAM credentials write verification failed!");
+        return false;
+    }
+    
+    LOG_INFO("Credentials written to FRAM at address 0x%04X", FRAM_CREDENTIALS_ADDR);
+    return true;
+}
+
+bool verifyCredentialsInFRAM() {
+    if (!framInitialized) {
+        LOG_ERROR("FRAM not initialized for credentials verify");
+        return false;
+    }
+    
+    FRAMCredentials creds;
+    if (!readCredentialsFromFRAM(creds)) {
+        return false;
+    }
+    
+    // Check magic number
+    if (creds.magic != FRAM_MAGIC_NUMBER) {
+        LOG_WARNING("Invalid credentials magic number: 0x%08X", creds.magic);
+        return false;
+    }
+    
+    // Check version (accept both v1 and v2)
+    if (creds.version != 0x0001 && creds.version != FRAM_DATA_VERSION) {
+        LOG_WARNING("Invalid credentials version: %d", creds.version);
+        return false;
+    }
+    
+    // Verify checksum
+    size_t checksum_offset = offsetof(FRAMCredentials, checksum);
+    uint16_t calculated_checksum = calculateChecksum((uint8_t*)&creds, checksum_offset);
+    
+    if (creds.checksum != calculated_checksum) {
+        LOG_WARNING("Credentials checksum mismatch: stored=%d, calculated=%d", 
+                    creds.checksum, calculated_checksum);
+        return false;
+    }
+    
+    LOG_INFO("Credentials verification successful");
+    return true;
 }

@@ -1,17 +1,17 @@
 # API Reference
 
-Complete reference for the ESP32-C3 Water System REST API endpoints.
+Complete reference for the ESP32-C3 Water System REST API endpoints with **dynamic credential support**.
 
-## 🔐 Authentication
+## 🔐 Authentication & Security
 
-All API endpoints (except `/api/login`) require authentication via session token.
+All API endpoints (except `/api/login`) require authentication via session token. **Admin password loaded dynamically from FRAM encrypted storage.**
 
 ### Login
 ```http
 POST /api/login
 Content-Type: application/x-www-form-urlencoded
 
-password=your_password_here
+password=your_admin_password_from_fram
 ```
 
 **Response (Success):**
@@ -30,6 +30,8 @@ password=your_password_here
 ```
 
 **Notes:**
+- **Admin password verified against FRAM stored hash** (AES-256 encrypted)
+- **Fallback to hardcoded hash** if FRAM credentials unavailable
 - Sets HTTP-only session cookie
 - Session expires after 5 minutes of inactivity
 - Rate limited: max 5 attempts per IP per minute
@@ -66,9 +68,16 @@ GET /api/status
   "rtc_info": "Using DS3231 external RTC",
   "free_heap": 184320,
   "uptime": 3600000,
-  "device_id": "ESP32C3_WaterPump_001"
+  "device_id": "DOLEWKA",
+  "credentials_source": "FRAM",
+  "system_mode": "PRODUCTION"
 }
 ```
+
+**🆕 New Fields:**
+- `device_id`: **Dynamic from FRAM credentials** (or fallback)
+- `credentials_source`: `"FRAM"` or `"FALLBACK"`
+- `system_mode`: `"PRODUCTION"` (API only available in Production Mode)
 
 **Water Status Values:**
 - `"NORMAL"` - Both sensors normal
@@ -78,7 +87,7 @@ GET /api/status
 - `"CHECKING"` - Sensors debouncing
 
 **WiFi Status Values:**
-- `"Connected"`
+- `"Connected"` - **Using FRAM or fallback WiFi credentials**
 - `"Disconnected"`
 - `"SSID not found"`
 - `"Connection failed"`
@@ -259,7 +268,7 @@ POST /api/reset-statistics
 **Effects:**
 - Sets all counters to zero
 - Updates reset timestamp to current time
-- Logs reset event to VPS (if configured)
+- **Logs reset event to VPS with FRAM device_id** (if configured)
 - Cannot be undone
 
 ## 🏠 Web Pages
@@ -268,7 +277,7 @@ POST /api/reset-statistics
 ```http
 GET /
 ```
-Returns HTML dashboard (requires authentication)
+Returns HTML dashboard (requires authentication with **FRAM admin password**)
 
 ### Login Page  
 ```http
@@ -289,9 +298,15 @@ GET /status/aggregate
   "aggregate": "15-03-01-0450",
   "state": "IDLE", 
   "daily_volume_ml": 450,
-  "in_cycle": false
+  "in_cycle": false,
+  "device_id": "DOLEWKA",
+  "credentials_loaded": true
 }
 ```
+
+**🆕 New Fields:**
+- `device_id`: **Dynamic from FRAM** (or fallback device ID)
+- `credentials_loaded`: Boolean indicating if FRAM credentials are in use
 
 **Aggregate Format:** `XX-YY-ZZ-VVVV`
 - `XX`: GAP1 failure count (last 14 days, max 99)
@@ -310,6 +325,46 @@ GET /status/aggregate
 - `ERROR` - Error state (requires reset)
 - `MANUAL_OVERRIDE` - Manual pump operation
 
+## 🔒 **Security & Mode Information**
+
+### System Mode Detection
+**Note**: API endpoints are **ONLY available in Production Mode**. Programming Mode disables web server and API for security.
+
+```http
+GET /api/status
+```
+Response includes:
+```json
+{
+  "system_mode": "PRODUCTION",
+  "credentials_source": "FRAM"
+}
+```
+
+**System Modes:**
+- **`PRODUCTION`**: Full API access, web interface enabled, CLI disabled
+- **`PROGRAMMING`**: API disabled, web interface disabled, CLI enabled for credential programming
+
+### Credential Source Indicator
+
+**FRAM Credentials Active:**
+```json
+{
+  "credentials_source": "FRAM",
+  "device_id": "DOLEWKA",
+  "wifi_status": "Connected"
+}
+```
+
+**Fallback Credentials Active:**
+```json
+{
+  "credentials_source": "FALLBACK", 
+  "device_id": "FALLBACK_DEVICE",
+  "wifi_status": "Connected"
+}
+```
+
 ## 🚨 Error Codes
 
 ### HTTP Status Codes
@@ -321,6 +376,7 @@ GET /status/aggregate
 | 401 | Unauthorized | Authentication required or session expired |
 | 429 | Too Many Requests | Rate limit exceeded |
 | 500 | Internal Server Error | Server-side error occurred |
+| 503 | Service Unavailable | **Programming Mode active** - API disabled |
 
 ### Application Error Codes
 
@@ -334,12 +390,14 @@ GET /status/aggregate
 
 **Common Error Codes:**
 - `"Missing password"` - Login request without password
-- `"Invalid password"` - Authentication failed
+- `"Invalid password"` - **Authentication failed against FRAM stored hash**
 - `"Session expired"` - Session timeout occurred
 - `"Pump already running"` - Cannot start pump when active
 - `"Value out of range"` - Parameter validation failed
 - `"FRAM error"` - Storage operation failed
 - `"Daily limit exceeded"` - Pump blocked due to volume limit
+- **`"Credentials unavailable"`** - FRAM credential loading failed
+- **`"Programming mode active"`** - API disabled in Programming Mode
 
 ## 🔄 Rate Limiting
 
@@ -365,6 +423,24 @@ X-RateLimit-Reset: 1705329085
 ```
 
 ## 📝 Request/Response Examples
+
+### **Dynamic Credential Workflow 🆕**
+
+1. **Check credential source:**
+```bash
+curl -X GET http://192.168.0.164/api/status \
+  --cookie "session_token=abc123..."
+  
+# Response shows credentials_source: "FRAM" or "FALLBACK"
+```
+
+2. **Login with FRAM admin password:**
+```bash
+curl -X POST http://192.168.0.164/api/login \
+  -d "password=admin_password_from_fram"
+  
+# Note: Password verified against FRAM stored hash
+```
 
 ### Complete Pump Cycle Workflow
 
@@ -401,16 +477,39 @@ curl -X POST http://192.168.0.164/api/reset-statistics \
   --cookie "session_token=abc123..."
 ```
 
-## 🌐 CORS & Headers
+## 🌐 VPS Integration
 
-### Response Headers
+### **Dynamic Device Identification 🆕**
+
+VPS logs now include **dynamic device ID from FRAM credentials**:
+
+```json
+{
+  "device_id": "DOLEWKA",
+  "timestamp": "2024-01-15 14:30:00",
+  "event_type": "AUTO_CYCLE_COMPLETE",
+  "volume_ml": 150,
+  "credentials_source": "FRAM"
+}
+```
+
+**VPS Authentication:**
+- Uses **VPS token from FRAM credentials**
+- Fallback to hardcoded token if FRAM unavailable
+- Device identification via encrypted FRAM device name
+
+### CORS & Headers
+
+**Response Headers:**
 ```http
 Content-Type: application/json
 Cache-Control: no-cache, no-store, must-revalidate
 Access-Control-Allow-Origin: *
+X-Credentials-Source: FRAM
+X-System-Mode: PRODUCTION
 ```
 
-### Required Request Headers
+**Required Request Headers:**
 ```http
 Content-Type: application/json  (for JSON requests)
 Content-Type: application/x-www-form-urlencoded  (for form data)
@@ -426,18 +525,69 @@ Set in firmware configuration:
 #define ENABLE_SERIAL_DEBUG true
 ```
 
-### Monitor Serial Output
+### Monitor Serial Output (Production Mode Only)
 ```bash
-pio device monitor --baud 115200
+pio device monitor -e production --baud 115200
+```
+
+### **Credential Debugging 🆕**
+```bash
+# Check credential loading at startup
+pio device monitor -e production | grep -E "(FRAM|credentials|Device ID)"
+
+# Expected startup messages:
+# ✅ Credentials loaded from FRAM successfully  
+# Device ID: DOLEWKA
+# WiFi connected - Using FRAM credentials
 ```
 
 ### Common Debug Information
 - Request IP address and endpoint
-- Authentication status
+- **Authentication against FRAM stored hash**
+- **Credential source (FRAM vs Fallback)**
 - Parameter validation results
 - Internal state changes
 - Error conditions and recovery
 
+### **Mode-Specific Debugging 🆕**
+
+**Programming Mode** (No API):
+```bash
+pio device monitor -e programming
+# CLI interface available
+# Water system disabled
+# API endpoints not available
+```
+
+**Production Mode** (Full API):
+```bash
+pio device monitor -e production  
+# CLI interface disabled
+# Water system enabled
+# API endpoints available
+# Dynamic credential loading
+```
+
+## 🛡️ **Security Notes**
+
+### API Access Control
+- **Programming Mode**: API completely disabled for security
+- **Production Mode**: Full API access with FRAM authentication
+- **Credential Updates**: Require switch to Programming Mode
+
+### Authentication Security
+- **Password hashing**: SHA-256 with dynamic salt
+- **FRAM storage**: AES-256 encrypted credential storage
+- **Session management**: Secure token-based authentication
+- **Rate limiting**: Brute force protection
+
+### Network Security
+- **Dynamic WiFi**: Connects using FRAM stored credentials
+- **VPS logging**: Uses FRAM stored authentication token  
+- **Device identification**: Dynamic device ID from FRAM
+
 ---
 
-**🔧 For integration examples and SDKs, see the [examples/](../examples/) directory.**
+**🔧 For Programming Mode CLI commands and credential management, see the [Hardware Setup Guide](hardware-setup.md) and [README](../README.md).**
+
+**🔐 API is only available in Production Mode. Use Programming Mode for credential management via CLI interface.**

@@ -52,5 +52,18 @@ void saveVolumeToNVS();
 void initNVS();
 
 
+#include "../mode_config.h"
+
+#if MODE_PRODUCTION
+    // Include credentials manager for dynamic loading
+    #include "credentials_manager.h"
+    
+    // Dynamic credential accessors (override hardcoded values)
+    #define WIFI_SSID_DYNAMIC getWiFiSSID()
+    #define WIFI_PASSWORD_DYNAMIC getWiFiPassword()
+    #define ADMIN_PASSWORD_HASH_DYNAMIC getAdminPasswordHash()
+    #define VPS_AUTH_TOKEN_DYNAMIC getVPSAuthToken()
+    #define DEVICE_ID_DYNAMIC getDeviceID()
+#endif
 
 #endif
