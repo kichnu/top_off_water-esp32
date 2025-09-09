@@ -645,6 +645,46 @@ bool writeCredentialsToFRAM(const FRAMCredentials& creds) {
     return true;
 }
 
+// bool verifyCredentialsInFRAM() {
+//     if (!framInitialized) {
+//         LOG_ERROR("FRAM not initialized for credentials verify");
+//         return false;
+//     }
+    
+//     FRAMCredentials creds;
+//     if (!readCredentialsFromFRAM(creds)) {
+//         return false;
+//     }
+    
+//     // Check magic number
+//     if (creds.magic != FRAM_MAGIC_NUMBER) {
+//         LOG_WARNING("Invalid credentials magic number: 0x%08X", creds.magic);
+//         return false;
+//     }
+    
+//     // Check version (accept both v1 and v2)
+//     if (creds.version != 0x0001 && creds.version != FRAM_DATA_VERSION) {
+//         LOG_WARNING("Invalid credentials version: %d", creds.version);
+//         return false;
+//     }
+    
+//     // Verify checksum
+//     size_t checksum_offset = offsetof(FRAMCredentials, checksum);
+//     uint16_t calculated_checksum = calculateChecksum((uint8_t*)&creds, checksum_offset);
+    
+//     if (creds.checksum != calculated_checksum) {
+//         LOG_WARNING("Credentials checksum mismatch: stored=%d, calculated=%d", 
+//                     creds.checksum, calculated_checksum);
+//         return false;
+//     }
+    
+//     LOG_INFO("Credentials verification successful");
+//     return true;
+// }
+
+
+
+
 bool verifyCredentialsInFRAM() {
     if (!framInitialized) {
         LOG_ERROR("FRAM not initialized for credentials verify");
@@ -662,8 +702,8 @@ bool verifyCredentialsInFRAM() {
         return false;
     }
     
-    // Check version (accept both v1 and v2)
-    if (creds.version != 0x0001 && creds.version != FRAM_DATA_VERSION) {
+    // 🔄 UPDATED: Check version (accept v1, v2, and v3)
+    if (creds.version != 0x0001 && creds.version != 0x0002 && creds.version != 0x0003) {
         LOG_WARNING("Invalid credentials version: %d", creds.version);
         return false;
     }
@@ -678,6 +718,6 @@ bool verifyCredentialsInFRAM() {
         return false;
     }
     
-    LOG_INFO("Credentials verification successful");
+    LOG_INFO("Credentials verification successful (version %d)", creds.version);
     return true;
 }

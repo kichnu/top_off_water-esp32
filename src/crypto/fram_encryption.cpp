@@ -175,15 +175,105 @@ size_t removePKCS7Padding(const uint8_t* data, size_t data_len) {
     return data_len - padding_bytes;
 }
 
+// bool encryptCredentials(const DeviceCredentials& creds, FRAMCredentials& fram_creds) {
+//     LOG_INFO("Encrypting credentials...");
+    
+//     // Clear the structure
+//     memset(&fram_creds, 0, sizeof(FRAMCredentials));
+    
+//     // Set magic and version
+//     fram_creds.magic = FRAM_MAGIC_NUMBER;
+//     fram_creds.version = FRAM_DATA_VERSION;
+    
+//     // Copy device name (plain text)
+//     strncpy(fram_creds.device_name, creds.device_name.c_str(), 31);
+//     fram_creds.device_name[31] = '\0';
+    
+//     // Generate encryption key from device name
+//     uint8_t encryption_key[AES_KEY_SIZE];
+//     if (!generateEncryptionKey(creds.device_name, encryption_key)) {
+//         LOG_ERROR("Failed to generate encryption key");
+//         return false;
+//     }
+    
+//     // Generate random IV
+//     if (!generateRandomIV(fram_creds.iv)) {
+//         LOG_ERROR("Failed to generate IV");
+//         return false;
+//     }
+    
+//     // Hash admin password
+//     String admin_password = creds.admin_password;
+//     uint8_t admin_hash[SHA256_HASH_SIZE];
+//     if (!sha256Hash(admin_password, admin_hash)) {
+//         LOG_ERROR("Failed to hash admin password");
+//         return false;
+//     }
+    
+//     // Convert hash to hex string
+//     String admin_hash_hex = "";
+//     for (int i = 0; i < SHA256_HASH_SIZE; i++) {
+//         if (admin_hash[i] < 16) admin_hash_hex += "0";
+//         admin_hash_hex += String(admin_hash[i], HEX);
+//     }
+    
+//     // Encrypt WiFi SSID
+//     size_t ciphertext_len = 64;
+//     if (!encryptData((const uint8_t*)creds.wifi_ssid.c_str(), creds.wifi_ssid.length(),
+//                      encryption_key, fram_creds.iv,
+//                      fram_creds.encrypted_wifi_ssid, &ciphertext_len)) {
+//         LOG_ERROR("Failed to encrypt WiFi SSID");
+//         return false;
+//     }
+    
+//     // Encrypt WiFi password
+//     ciphertext_len = 128;
+//     if (!encryptData((const uint8_t*)creds.wifi_password.c_str(), creds.wifi_password.length(),
+//                      encryption_key, fram_creds.iv,
+//                      fram_creds.encrypted_wifi_password, &ciphertext_len)) {
+//         LOG_ERROR("Failed to encrypt WiFi password");
+//         return false;
+//     }
+    
+//     // Encrypt admin hash
+//     ciphertext_len = 96;
+//     if (!encryptData((const uint8_t*)admin_hash_hex.c_str(), admin_hash_hex.length(),
+//                      encryption_key, fram_creds.iv,
+//                      fram_creds.encrypted_admin_hash, &ciphertext_len)) {
+//         LOG_ERROR("Failed to encrypt admin hash");
+//         return false;
+//     }
+    
+//     // Encrypt VPS token
+//     ciphertext_len = 160;
+//     if (!encryptData((const uint8_t*)creds.vps_token.c_str(), creds.vps_token.length(),
+//                      encryption_key, fram_creds.iv,
+//                      fram_creds.encrypted_vps_token, &ciphertext_len)) {
+//         LOG_ERROR("Failed to encrypt VPS token");
+//         return false;
+//     }
+    
+//     // Calculate checksum (only bytes before checksum field)
+//     size_t checksum_offset = offsetof(FRAMCredentials, checksum);
+//     uint16_t temp_checksum = calculateChecksum((uint8_t*)&fram_creds, checksum_offset);
+//     fram_creds.checksum = temp_checksum;
+    
+//     LOG_INFO("SUCCESS: Credentials encrypted");
+//     return true;
+// }
+
+
+
+
 bool encryptCredentials(const DeviceCredentials& creds, FRAMCredentials& fram_creds) {
-    LOG_INFO("Encrypting credentials...");
+    LOG_INFO("Encrypting credentials with VPS URL support...");
     
     // Clear the structure
     memset(&fram_creds, 0, sizeof(FRAMCredentials));
     
-    // Set magic and version
+    // Set magic and version - INCREMENT VERSION TO 3
     fram_creds.magic = FRAM_MAGIC_NUMBER;
-    fram_creds.version = FRAM_DATA_VERSION;
+    fram_creds.version = 0x0003;  // 🆕 NEW VERSION
     
     // Copy device name (plain text)
     strncpy(fram_creds.device_name, creds.device_name.c_str(), 31);
@@ -253,17 +343,97 @@ bool encryptCredentials(const DeviceCredentials& creds, FRAMCredentials& fram_cr
         return false;
     }
     
+    // 🆕 NEW: Encrypt VPS URL
+    ciphertext_len = 128;
+    if (!encryptData((const uint8_t*)creds.vps_url.c_str(), creds.vps_url.length(),
+                     encryption_key, fram_creds.iv,
+                     fram_creds.encrypted_vps_url, &ciphertext_len)) {
+        LOG_ERROR("Failed to encrypt VPS URL");
+        return false;
+    }
+    
     // Calculate checksum (only bytes before checksum field)
     size_t checksum_offset = offsetof(FRAMCredentials, checksum);
     uint16_t temp_checksum = calculateChecksum((uint8_t*)&fram_creds, checksum_offset);
     fram_creds.checksum = temp_checksum;
     
-    LOG_INFO("SUCCESS: Credentials encrypted");
+    LOG_INFO("SUCCESS: Credentials encrypted with VPS URL");
     return true;
 }
 
+// bool decryptCredentials(const FRAMCredentials& fram_creds, DeviceCredentials& creds) {
+//     LOG_INFO("Decrypting credentials...");
+    
+//     // Generate encryption key from device name
+//     uint8_t encryption_key[AES_KEY_SIZE];
+//     String device_name = String(fram_creds.device_name);
+    
+//     if (!generateEncryptionKey(device_name, encryption_key)) {
+//         LOG_ERROR("Failed to generate encryption key");
+//         return false;
+//     }
+    
+//     // Set device name
+//     creds.device_name = device_name;
+    
+//     // Decrypt WiFi SSID
+//     uint8_t plaintext_buffer[256];
+//     size_t plaintext_len = sizeof(plaintext_buffer);
+    
+//     if (!decryptData(fram_creds.encrypted_wifi_ssid, 64,
+//                      encryption_key, fram_creds.iv,
+//                      plaintext_buffer, &plaintext_len)) {
+//         LOG_ERROR("Failed to decrypt WiFi SSID");
+//         return false;
+//     }
+    
+//     plaintext_buffer[plaintext_len] = '\0';
+//     creds.wifi_ssid = String((char*)plaintext_buffer);
+    
+//     // Decrypt WiFi password
+//     plaintext_len = sizeof(plaintext_buffer);
+//     if (!decryptData(fram_creds.encrypted_wifi_password, 128,
+//                      encryption_key, fram_creds.iv,
+//                      plaintext_buffer, &plaintext_len)) {
+//         LOG_ERROR("Failed to decrypt WiFi password");
+//         return false;
+//     }
+//     plaintext_buffer[plaintext_len] = '\0';
+//     creds.wifi_password = String((char*)plaintext_buffer);
+    
+//     // Decrypt admin hash (we return the hash, not original password)
+//     plaintext_len = sizeof(plaintext_buffer);
+//     if (!decryptData(fram_creds.encrypted_admin_hash, 96,
+//                      encryption_key, fram_creds.iv,
+//                      plaintext_buffer, &plaintext_len)) {
+//         LOG_ERROR("Failed to decrypt admin hash");
+//         creds.admin_password = ""; // Set empty on failure
+//     } else {
+//         plaintext_buffer[plaintext_len] = '\0';
+//         creds.admin_password = String((char*)plaintext_buffer); // This is actually the hash
+//     }
+    
+//     // Decrypt VPS token
+//     plaintext_len = sizeof(plaintext_buffer);
+//     if (!decryptData(fram_creds.encrypted_vps_token, 160,
+//                      encryption_key, fram_creds.iv,
+//                      plaintext_buffer, &plaintext_len)) {
+//         LOG_ERROR("Failed to decrypt VPS token");
+//         creds.vps_token = ""; // Set empty on failure
+//     } else {
+//         plaintext_buffer[plaintext_len] = '\0';
+//         creds.vps_token = String((char*)plaintext_buffer);
+//     }
+    
+//     LOG_INFO("SUCCESS: Credential decryption completed");
+//     return true;
+// }
+
+
+
+
 bool decryptCredentials(const FRAMCredentials& fram_creds, DeviceCredentials& creds) {
-    LOG_INFO("Decrypting credentials...");
+    LOG_INFO("Decrypting credentials with VPS URL support...");
     
     // Generate encryption key from device name
     uint8_t encryption_key[AES_KEY_SIZE];
@@ -277,17 +447,17 @@ bool decryptCredentials(const FRAMCredentials& fram_creds, DeviceCredentials& cr
     // Set device name
     creds.device_name = device_name;
     
-    // Decrypt WiFi SSID
     uint8_t plaintext_buffer[256];
-    size_t plaintext_len = sizeof(plaintext_buffer);
+    size_t plaintext_len;
     
+    // Decrypt WiFi SSID
+    plaintext_len = sizeof(plaintext_buffer);
     if (!decryptData(fram_creds.encrypted_wifi_ssid, 64,
                      encryption_key, fram_creds.iv,
                      plaintext_buffer, &plaintext_len)) {
         LOG_ERROR("Failed to decrypt WiFi SSID");
         return false;
     }
-    
     plaintext_buffer[plaintext_len] = '\0';
     creds.wifi_ssid = String((char*)plaintext_buffer);
     
@@ -302,16 +472,16 @@ bool decryptCredentials(const FRAMCredentials& fram_creds, DeviceCredentials& cr
     plaintext_buffer[plaintext_len] = '\0';
     creds.wifi_password = String((char*)plaintext_buffer);
     
-    // Decrypt admin hash (we return the hash, not original password)
+    // Decrypt admin hash
     plaintext_len = sizeof(plaintext_buffer);
     if (!decryptData(fram_creds.encrypted_admin_hash, 96,
                      encryption_key, fram_creds.iv,
                      plaintext_buffer, &plaintext_len)) {
         LOG_ERROR("Failed to decrypt admin hash");
-        creds.admin_password = ""; // Set empty on failure
+        creds.admin_password = "";
     } else {
         plaintext_buffer[plaintext_len] = '\0';
-        creds.admin_password = String((char*)plaintext_buffer); // This is actually the hash
+        creds.admin_password = String((char*)plaintext_buffer);
     }
     
     // Decrypt VPS token
@@ -320,13 +490,25 @@ bool decryptCredentials(const FRAMCredentials& fram_creds, DeviceCredentials& cr
                      encryption_key, fram_creds.iv,
                      plaintext_buffer, &plaintext_len)) {
         LOG_ERROR("Failed to decrypt VPS token");
-        creds.vps_token = ""; // Set empty on failure
+        creds.vps_token = "";
     } else {
         plaintext_buffer[plaintext_len] = '\0';
         creds.vps_token = String((char*)plaintext_buffer);
     }
     
-    LOG_INFO("SUCCESS: Credential decryption completed");
+    // 🆕 NEW: Decrypt VPS URL
+    plaintext_len = sizeof(plaintext_buffer);
+    if (!decryptData(fram_creds.encrypted_vps_url, 128,
+                     encryption_key, fram_creds.iv,
+                     plaintext_buffer, &plaintext_len)) {
+        LOG_WARNING("Failed to decrypt VPS URL - may be old version without VPS URL");
+        creds.vps_url = ""; // Set empty for backward compatibility
+    } else {
+        plaintext_buffer[plaintext_len] = '\0';
+        creds.vps_url = String((char*)plaintext_buffer);
+    }
+    
+    LOG_INFO("SUCCESS: Credential decryption completed with VPS URL");
     return true;
 }
 
@@ -365,3 +547,32 @@ uint16_t calculateChecksum(const uint8_t* data, size_t size) {
     }
     return sum;
 }
+
+
+
+
+
+
+// NEW FUNCTIONS 
+
+
+bool validateVPSURL(const String& url) {
+    if (url.length() == 0 || url.length() > 100) {
+        return false;
+    }
+    
+    // Basic URL validation - must start with http:// or https://
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+        return false;
+    }
+    
+    // Check for basic URL structure
+    int slashCount = 0;
+    for (int i = 0; i < url.length(); i++) {
+        if (url.charAt(i) == '/') slashCount++;
+    }
+    
+    return slashCount >= 3; // http://domain/path requires at least 3 slashes
+}
+
+

@@ -93,12 +93,42 @@ const char* LOGIN_HTML = R"rawliteral(
                 if (data.success) {
                     window.location.href = '/';
                 } else {
-                    errorDiv.textContent = 'Invalid password';
+                    // errorDiv.textContent = 'Invalid password';
+                let errorMessage = data.error || 'Login failed';
+                
+                // 🆕 NEW: Show setup instructions for unconfigured system
+                if (data.message && data.setup_instructions) {
+                    errorMessage = data.message;
+                    const setupDiv = document.createElement('div');
+                    setupDiv.style.marginTop = '15px';
+                    setupDiv.style.padding = '15px';
+                    setupDiv.style.backgroundColor = '#fff3cd';
+                    setupDiv.style.border = '1px solid #ffeaa7';
+                    setupDiv.style.borderRadius = '8px';
+                    setupDiv.style.fontSize = '14px';
+                    setupDiv.innerHTML = `
+                        <strong>🔧 Setup Required:</strong><br>
+                        ${data.setup_instructions}<br>
+                        <strong>4. FRAM> program</strong><br>
+                        <em>Then switch back to Production Mode</em>
+                    `;
+                    
+                    // Remove existing setup instructions
+                    const existingSetup = document.querySelector('.setup-instructions');
+                    if (existingSetup) existingSetup.remove();
+                    
+                    setupDiv.className = 'setup-instructions';
+                    errorDiv.parentNode.insertBefore(setupDiv, errorDiv.nextSibling);
+                }
+                
+                errorDiv.textContent = errorMessage;                    
+
                     errorDiv.style.display = 'block';
                 }
             })
             .catch(error => {
-                errorDiv.textContent = 'Connection error';
+                // errorDiv.textContent = 'Connection error';
+            errorDiv.textContent = 'Connection error - Check if device is in Production Mode';                
                 errorDiv.style.display = 'block';
             });
         });

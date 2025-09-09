@@ -133,11 +133,28 @@
 
 void initAuthManager() {
     LOG_INFO("Authentication manager initialized");
-#if MODE_PRODUCTION
-    LOG_INFO("Using %s admin credentials", areCredentialsLoaded() ? "FRAM" : "fallback");
-#else
-    LOG_INFO("Using hardcoded admin credentials (programming mode)");
-#endif
+// #if MODE_PRODUCTION
+//     LOG_INFO("Using %s admin credentials", areCredentialsLoaded() ? "FRAM" : "fallback");
+// #else
+//     LOG_INFO("Using hardcoded admin credentials (programming mode)");
+// #endif
+
+ #if MODE_PRODUCTION
+   LOG_INFO("Using %s admin credentials", areCredentialsLoaded() ? "FRAM" : "fallback");
+    if (areCredentialsLoaded()) {
+       LOG_INFO("Using FRAM admin credentials");
+    } else {
+      LOG_WARNING("⚠️ NO FRAM CREDENTIALS - Web authentication DISABLED!");
+      LOG_WARNING("⚠️ Use Programming Mode to configure credentials!");
+    }
+ #else
+   LOG_INFO("Using hardcoded admin credentials (programming mode)");
+   LOG_INFO("Programming Mode - Authentication bypassed for CLI access");
+ #endif
+
+
+
+
 }
 
 bool isIPAllowed(IPAddress ip) {
@@ -173,35 +190,68 @@ String hashPassword(const String& password) {
 }
 
 bool verifyPassword(const String& password) {
-    String inputHash = hashPassword(password);
+    // String inputHash = hashPassword(password);
     
 #if MODE_PRODUCTION
     // Production mode: use dynamic admin password hash
+    // String expectedHash = String(getAdminPasswordHash());
+    // bool valid = (inputHash == expectedHash);
+
+       // Production mode: REQUIRE FRAM credentials
+    if (!areCredentialsLoaded()) {
+        LOG_ERROR("🔒 Authentication BLOCKED - No FRAM credentials loaded!");
+        LOG_ERROR("🔧 Use Programming Mode to configure credentials first:");
+        LOG_ERROR("   1. pio run -e programming -t upload");
+        LOG_ERROR("   2. pio device monitor -e programming");
+        LOG_ERROR("   3. FRAM> program");
+        return false;  // ✅ Force FRAM setup!
+    }
+    
+    String inputHash = hashPassword(password);
     String expectedHash = String(getAdminPasswordHash());
-    bool valid = (inputHash == expectedHash);
+
     
-    if (valid) {
-        LOG_INFO("Password verification successful (%s)", 
-                areCredentialsLoaded() ? "FRAM credentials" : "fallback credentials");
-    } else {
-        LOG_WARNING("Password verification failed");
-        if (areCredentialsLoaded()) {
-            LOG_WARNING("Check if admin password was correctly programmed to FRAM");
-        } else {
-            LOG_WARNING("Using fallback credentials - consider programming FRAM");
-        }
+    if (expectedHash.length() == 0 || expectedHash == "NO_AUTH_REQUIRES_FRAM_PROGRAMMING") {
+        LOG_ERROR("Invalid admin hash from FRAM - check credential programming");
+        return false;
     }
+    
+    bool valid = (inputHash == expectedHash);
+
+    if (valid) {
+        // LOG_INFO("Password verification successful (%s)", 
+        //         areCredentialsLoaded() ? "FRAM credentials" : "fallback credentials");
+        LOG_INFO("✅ Password verification successful (FRAM credentials)");
+    } else {
+        // LOG_WARNING("Password verification failed");
+        // if (areCredentialsLoaded()) {
+        //     LOG_WARNING("Check if admin password was correctly programmed to FRAM");
+        // } else {
+        //     LOG_WARNING("Using fallback credentials - consider programming FRAM");
+        // }
+
+        LOG_WARNING("❌ Password verification failed");
+        LOG_WARNING("💡 Verify admin password was correctly programmed to FRAM"); 
+    }
+    return valid;
+
+
 #else
-    // Programming mode: use hardcoded admin password hash
-    String expectedHash = String(ADMIN_PASSWORD_HASH);
-    bool valid = (inputHash == expectedHash);
+    // // Programming mode: use hardcoded admin password hash
+    // String expectedHash = String(ADMIN_PASSWORD_HASH);
+    // bool valid = (inputHash == expectedHash);
     
-    if (valid) {
-        LOG_INFO("Password verification successful (hardcoded - programming mode)");
-    } else {
-        LOG_WARNING("Password verification failed (programming mode)");
-    }
+    // if (valid) {
+    //     LOG_INFO("Password verification successful (hardcoded - programming mode)");
+    // } else {
+    //     LOG_WARNING("Password verification failed (programming mode)");
+    // }
+
+
+    // Programming mode: Allow CLI access for credential setup
+    LOG_INFO("🔧 Programming Mode - Authentication bypassed for CLI access");
+    return true;  // Allow access for credential programming
+    
 #endif
     
-    return valid;
 }

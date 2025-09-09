@@ -65,6 +65,24 @@ void handleLogin(AsyncWebServerRequest* request) {
         request->send(429, "text/plain", "Too Many Requests");
         return;
     }
+
+#if MODE_PRODUCTION
+    // 🔒 Check if FRAM credentials are loaded
+    if (!areCredentialsLoaded()) {
+        recordFailedAttempt(clientIP);
+        JsonDocument error_response;
+        error_response["success"] = false;
+        error_response["error"] = "System not configured";
+        error_response["message"] = "FRAM credentials required. Use Programming Mode to configure.";
+        error_response["setup_instructions"] = "1. pio run -e programming -t upload  2. pio device monitor -e programming  3. FRAM> program";
+        
+        String response_str;
+        serializeJson(error_response, response_str);
+        request->send(503, "application/json", response_str);  // Service Unavailable
+        return;
+    }
+#endif
+ 
     
     if (!request->hasParam("password", true)) {
         recordFailedAttempt(clientIP);
@@ -83,7 +101,22 @@ void handleLogin(AsyncWebServerRequest* request) {
         request->send(response);
     } else {
         recordFailedAttempt(clientIP);
-        request->send(401, "application/json", "{\"success\":false,\"error\":\"Invalid password\"}");
+        // request->send(401, "application/json", "{\"success\":false,\"error\":\"Invalid password\"}");
+
+                
+        JsonDocument error_response;
+        error_response["success"] = false;
+        error_response["error"] = "Invalid password";
+        
+#if MODE_PRODUCTION
+        if (!areCredentialsLoaded()) {
+            error_response["message"] = "System requires FRAM credential programming";
+        }
+#endif
+        
+        String response_str;
+        serializeJson(error_response, response_str);
+        request->send(401, "application/json", response_str);
     }
 }
 
@@ -106,6 +139,33 @@ void handleLogout(AsyncWebServerRequest* request) {
     request->send(response);
 }
 
+// void handleStatus(AsyncWebServerRequest* request) {
+//     if (!checkAuthentication(request)) {
+//         request->send(401, "text/plain", "Unauthorized");
+//         return;
+//     }
+    
+//     JsonDocument json;
+//     json["water_status"] = getWaterStatus();
+//     json["pump_running"] = isPumpActive();
+//     json["pump_remaining"] = getPumpRemainingTime();
+//     json["wifi_status"] = getWiFiStatus();
+//     json["wifi_connected"] = isWiFiConnected();
+//     json["rtc_time"] = getCurrentTimestamp();
+//     json["rtc_working"] = isRTCWorking();
+//     json["rtc_info"] = getRTCInfo(); // Added RTC type information
+//     json["free_heap"] = ESP.getFreeHeap();
+//     json["uptime"] = millis();
+//     json["device_id"] = DEVICE_ID;
+    
+//     String response;
+//     serializeJson(json, response);
+//     request->send(200, "application/json", response);
+// }
+
+
+
+
 void handleStatus(AsyncWebServerRequest* request) {
     if (!checkAuthentication(request)) {
         request->send(401, "text/plain", "Unauthorized");
@@ -120,10 +180,30 @@ void handleStatus(AsyncWebServerRequest* request) {
     json["wifi_connected"] = isWiFiConnected();
     json["rtc_time"] = getCurrentTimestamp();
     json["rtc_working"] = isRTCWorking();
-    json["rtc_info"] = getRTCInfo(); // Added RTC type information
+    json["rtc_info"] = getRTCInfo();
     json["free_heap"] = ESP.getFreeHeap();
     json["uptime"] = millis();
+    
+    // 🔄 UPDATED: Dynamic device ID and credentials info
+#if MODE_PRODUCTION
+    json["device_id"] = getDeviceID();
+    json["credentials_source"] = areCredentialsLoaded() ? "FRAM" : "FALLBACK";
+    json["system_mode"] = "PRODUCTION";
+    json["vps_url"] = getVPSURL();  // 🆕 NEW: Show current VPS URL
+
+    json["authentication_enabled"] = areCredentialsLoaded();  // 🆕 NEW
+    
+    if (!areCredentialsLoaded()) {
+        json["setup_required"] = true;
+        json["setup_message"] = "Use Programming Mode to configure FRAM credentials";
+    }
+#else
     json["device_id"] = DEVICE_ID;
+    json["credentials_source"] = "HARDCODED";
+    json["system_mode"] = "PROGRAMMING";
+    json["vps_url"] = VPS_URL;
+    json["authentication_enabled"] = false;  // Programming mode bypasses auth
+#endif
     
     String response;
     serializeJson(json, response);

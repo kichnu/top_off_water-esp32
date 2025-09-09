@@ -258,6 +258,100 @@ void cmdRestore() {
     printInfo("Please use FRAM programmer device for complete restore");
 }
 
+// void cmdProgram() {
+//     printInfo("=== Interactive Credential Programming ===");
+    
+//     DeviceCredentials creds;
+    
+//     // Get device name
+//     Serial.print("Device Name (1-31 chars, alphanumeric + _): ");
+//     waitingForInput = true;
+//     creds.device_name = readSerialLine();
+//     waitingForInput = false;
+    
+//     if (!validateDeviceName(creds.device_name)) {
+//         printError("Invalid device name");
+//         return;
+//     }
+    
+//     // Get WiFi SSID
+//     Serial.print("WiFi SSID (1-63 chars): ");
+//     waitingForInput = true;
+//     creds.wifi_ssid = readSerialLine();
+//     waitingForInput = false;
+    
+//     if (!validateWiFiSSID(creds.wifi_ssid)) {
+//         printError("Invalid WiFi SSID");
+//         return;
+//     }
+    
+//     // Get WiFi password
+//     Serial.print("WiFi Password (1-127 chars): ");
+//     waitingForInput = true;
+//     creds.wifi_password = readSerialLine();
+//     waitingForInput = false;
+    
+//     if (!validateWiFiPassword(creds.wifi_password)) {
+//         printError("Invalid WiFi password");
+//         return;
+//     }
+    
+//     // Get admin password
+//     Serial.print("Admin Password: ");
+//     waitingForInput = true;
+//     creds.admin_password = readSerialLine();
+//     waitingForInput = false;
+    
+//     if (creds.admin_password.length() == 0) {
+//         printError("Admin password cannot be empty");
+//         return;
+//     }
+    
+//     // Get VPS token
+//     Serial.print("VPS Token: ");
+//     waitingForInput = true;
+//     creds.vps_token = readSerialLine();
+//     waitingForInput = false;
+    
+//     if (!validateVPSToken(creds.vps_token)) {
+//         printError("Invalid VPS token");
+//         return;
+//     }
+    
+//     // Confirm programming
+//     Serial.println();
+//     Serial.println("=== CREDENTIALS SUMMARY ===");
+//     Serial.print("Device Name: "); Serial.println(creds.device_name);
+//     Serial.print("WiFi SSID: "); Serial.println(creds.wifi_ssid);
+//     Serial.print("WiFi Password: "); Serial.println("******* (hidden)");
+//     Serial.print("Admin Password: "); Serial.println("******* (will be hashed)");
+//     Serial.print("VPS Token: "); Serial.println(creds.vps_token);
+//     Serial.println();
+    
+//     Serial.print("Program these credentials to FRAM? (YES/no): ");
+//     waitingForInput = true;
+//     String confirm = readSerialLine();
+//     waitingForInput = false;
+    
+//     if (confirm == "YES" || confirm == "yes" || confirm == "y" || confirm == "") {
+//         // Encrypt and write credentials
+//         FRAMCredentials fram_creds;
+//         if (encryptCredentials(creds, fram_creds)) {
+//             if (writeCredentialsToFRAM(fram_creds)) {
+//                 printSuccess("Credentials programmed successfully!");
+//             } else {
+//                 printError("Failed to write credentials to FRAM");
+//             }
+//         } else {
+//             printError("Failed to encrypt credentials");
+//         }
+//     } else {
+//         printInfo("Programming cancelled");
+//     }
+// }
+
+
+
 void cmdProgram() {
     printInfo("=== Interactive Credential Programming ===");
     
@@ -318,6 +412,17 @@ void cmdProgram() {
         return;
     }
     
+    // 🆕 NEW: Get VPS URL
+    Serial.print("VPS URL (e.g. http://server:5000/api/water-events): ");
+    waitingForInput = true;
+    creds.vps_url = readSerialLine();
+    waitingForInput = false;
+    
+    if (!validateVPSURL(creds.vps_url)) {
+        printError("Invalid VPS URL - must start with http:// or https://");
+        return;
+    }
+    
     // Confirm programming
     Serial.println();
     Serial.println("=== CREDENTIALS SUMMARY ===");
@@ -326,6 +431,7 @@ void cmdProgram() {
     Serial.print("WiFi Password: "); Serial.println("******* (hidden)");
     Serial.print("Admin Password: "); Serial.println("******* (will be hashed)");
     Serial.print("VPS Token: "); Serial.println(creds.vps_token);
+    Serial.print("VPS URL: "); Serial.println(creds.vps_url);  // 🆕 NEW
     Serial.println();
     
     Serial.print("Program these credentials to FRAM? (YES/no): ");
@@ -339,6 +445,7 @@ void cmdProgram() {
         if (encryptCredentials(creds, fram_creds)) {
             if (writeCredentialsToFRAM(fram_creds)) {
                 printSuccess("Credentials programmed successfully!");
+                Serial.println("🆕 NOTE: This includes VPS URL - device will use dynamic VPS endpoint");
             } else {
                 printError("Failed to write credentials to FRAM");
             }
@@ -349,6 +456,34 @@ void cmdProgram() {
         printInfo("Programming cancelled");
     }
 }
+
+// void cmdVerify() {
+//     printInfo("Verifying FRAM credentials...");
+    
+//     if (verifyCredentialsInFRAM()) {
+//         printSuccess("Credentials verification PASSED");
+        
+//         // Try to decrypt and show info
+//         FRAMCredentials fram_creds;
+//         if (readCredentialsFromFRAM(fram_creds)) {
+//             DeviceCredentials creds;
+//             if (decryptCredentials(fram_creds, creds)) {
+//                 Serial.println();
+//                 Serial.println("=== DECRYPTED CREDENTIALS ===");
+//                 Serial.print("Device Name: "); Serial.println(creds.device_name);
+//                 Serial.print("WiFi SSID: "); Serial.println(creds.wifi_ssid);
+//                 Serial.print("WiFi Password: "); Serial.println("******* (hidden)");
+//                 Serial.print("Admin Hash: "); Serial.println(creds.admin_password); // This is the hash
+//                 Serial.print("VPS Token: "); Serial.println(creds.vps_token);
+//             } else {
+//                 printWarning("Could not decrypt credentials (key derivation issue?)");
+//             }
+//         }
+//     } else {
+//         printError("Credentials verification FAILED");
+//     }
+// }
+
 
 void cmdVerify() {
     printInfo("Verifying FRAM credentials...");
@@ -363,11 +498,18 @@ void cmdVerify() {
             if (decryptCredentials(fram_creds, creds)) {
                 Serial.println();
                 Serial.println("=== DECRYPTED CREDENTIALS ===");
+                Serial.print("FRAM Version: "); Serial.println(fram_creds.version);
                 Serial.print("Device Name: "); Serial.println(creds.device_name);
                 Serial.print("WiFi SSID: "); Serial.println(creds.wifi_ssid);
                 Serial.print("WiFi Password: "); Serial.println("******* (hidden)");
                 Serial.print("Admin Hash: "); Serial.println(creds.admin_password); // This is the hash
                 Serial.print("VPS Token: "); Serial.println(creds.vps_token);
+                Serial.print("VPS URL: "); 
+                if (creds.vps_url.length() > 0) {
+                    Serial.println(creds.vps_url);  // 🆕 NEW
+                } else {
+                    Serial.println("(not set - using fallback)");
+                }
             } else {
                 printWarning("Could not decrypt credentials (key derivation issue?)");
             }
@@ -376,6 +518,63 @@ void cmdVerify() {
         printError("Credentials verification FAILED");
     }
 }
+
+
+
+// void cmdConfig() {
+//     printInfo("=== JSON Configuration Mode ===");
+//     Serial.println("Paste JSON configuration below (single line):");
+//     Serial.println("Format:");
+//     Serial.println("{");
+//     Serial.println("  \"device_name\": \"DOLEWKA\",");
+//     Serial.println("  \"wifi_ssid\": \"MyNetwork\",");
+//     Serial.println("  \"wifi_password\": \"MyPassword\",");
+//     Serial.println("  \"admin_password\": \"admin123\",");
+//     Serial.println("  \"vps_token\": \"212d4a3d708f907c2c782937f72daf28aa66d8e342d4ede15381b6d8295344d6\"");
+//     Serial.println("}");
+//     Serial.println();
+//     Serial.print("JSON: ");
+    
+//     waitingForInput = true;
+//     String jsonInput = readSerialLine();
+//     waitingForInput = false;
+    
+//     DeviceCredentials creds;
+//     if (parseJSONCredentials(jsonInput, creds)) {
+//         Serial.println();
+//         Serial.println("=== PARSED CREDENTIALS ===");
+//         Serial.print("Device Name: "); Serial.println(creds.device_name);
+//         Serial.print("WiFi SSID: "); Serial.println(creds.wifi_ssid);
+//         Serial.print("WiFi Password: "); Serial.println("******* (hidden)");
+//         Serial.print("Admin Password: "); Serial.println("******* (will be hashed)");
+//         Serial.print("VPS Token: "); Serial.println(creds.vps_token);
+//         Serial.println();
+        
+//         Serial.print("Program these credentials? (YES/no): ");
+//         waitingForInput = true;
+//         String confirm = readSerialLine();
+//         waitingForInput = false;
+        
+//         if (confirm == "YES" || confirm == "yes" || confirm == "y" || confirm == "") {
+//             // Encrypt and write credentials
+//             FRAMCredentials fram_creds;
+//             if (encryptCredentials(creds, fram_creds)) {
+//                 if (writeCredentialsToFRAM(fram_creds)) {
+//                     printSuccess("JSON credentials programmed successfully!");
+//                 } else {
+//                     printError("Failed to write credentials to FRAM");
+//                 }
+//             } else {
+//                 printError("Failed to encrypt credentials");
+//             }
+//         } else {
+//             printInfo("Programming cancelled");
+//         }
+//     } else {
+//         printError("Invalid JSON format or missing required fields");
+//     }
+// }
+
 
 void cmdConfig() {
     printInfo("=== JSON Configuration Mode ===");
@@ -386,7 +585,8 @@ void cmdConfig() {
     Serial.println("  \"wifi_ssid\": \"MyNetwork\",");
     Serial.println("  \"wifi_password\": \"MyPassword\",");
     Serial.println("  \"admin_password\": \"admin123\",");
-    Serial.println("  \"vps_token\": \"212d4a3d708f907c2c782937f72daf28aa66d8e342d4ede15381b6d8295344d6\"");
+    Serial.println("  \"vps_token\": \"212d4a3d708f907c2c782937f72daf28aa66d8e342d4ede15381b6d8295344d6\",");
+    Serial.println("  \"vps_url\": \"http://146.59.92.15:5000/api/water-events\"");  // 🆕 NEW
     Serial.println("}");
     Serial.println();
     Serial.print("JSON: ");
@@ -404,6 +604,7 @@ void cmdConfig() {
         Serial.print("WiFi Password: "); Serial.println("******* (hidden)");
         Serial.print("Admin Password: "); Serial.println("******* (will be hashed)");
         Serial.print("VPS Token: "); Serial.println(creds.vps_token);
+        Serial.print("VPS URL: "); Serial.println(creds.vps_url);      // 🆕 NEW
         Serial.println();
         
         Serial.print("Program these credentials? (YES/no): ");
@@ -430,6 +631,10 @@ void cmdConfig() {
         printError("Invalid JSON format or missing required fields");
     }
 }
+
+
+
+
 
 void cmdTest() {
     printInfo("=== FRAM Test Sequence ===");
@@ -513,6 +718,39 @@ void cmdTest() {
     }
 }
 
+// bool parseJSONCredentials(const String& json, DeviceCredentials& creds) {
+//     JsonDocument doc;
+//     DeserializationError error = deserializeJson(doc, json);
+    
+//     if (error) {
+//         Serial.print("JSON parsing error: ");
+//         Serial.println(error.c_str());
+//         return false;
+//     }
+    
+//     // Check required fields using modern ArduinoJson syntax
+//     if (!doc["device_name"].is<String>() || !doc["wifi_ssid"].is<String>() ||
+//         !doc["wifi_password"].is<String>() || !doc["admin_password"].is<String>() ||
+//         !doc["vps_token"].is<String>()) {
+//         Serial.println("Missing required JSON fields");
+//         return false;
+//     }
+    
+//     creds.device_name = doc["device_name"].as<String>();
+//     creds.wifi_ssid = doc["wifi_ssid"].as<String>();
+//     creds.wifi_password = doc["wifi_password"].as<String>();
+//     creds.admin_password = doc["admin_password"].as<String>();
+//     creds.vps_token = doc["vps_token"].as<String>();
+    
+//     // Validate all fields
+//     return validateDeviceName(creds.device_name) &&
+//            validateWiFiSSID(creds.wifi_ssid) &&
+//            validateWiFiPassword(creds.wifi_password) &&
+//            creds.admin_password.length() > 0 &&
+//            validateVPSToken(creds.vps_token);
+// }
+
+
 bool parseJSONCredentials(const String& json, DeviceCredentials& creds) {
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, json);
@@ -527,7 +765,7 @@ bool parseJSONCredentials(const String& json, DeviceCredentials& creds) {
     if (!doc["device_name"].is<String>() || !doc["wifi_ssid"].is<String>() ||
         !doc["wifi_password"].is<String>() || !doc["admin_password"].is<String>() ||
         !doc["vps_token"].is<String>()) {
-        Serial.println("Missing required JSON fields");
+        Serial.println("Missing required JSON fields (device_name, wifi_ssid, wifi_password, admin_password, vps_token)");
         return false;
     }
     
@@ -537,13 +775,25 @@ bool parseJSONCredentials(const String& json, DeviceCredentials& creds) {
     creds.admin_password = doc["admin_password"].as<String>();
     creds.vps_token = doc["vps_token"].as<String>();
     
+    // 🆕 NEW: VPS URL is optional for backward compatibility
+    if (doc["vps_url"].is<String>()) {
+        creds.vps_url = doc["vps_url"].as<String>();
+    } else {
+        creds.vps_url = "http://localhost:5000/api/water-events"; // Default fallback
+        Serial.println("Warning: vps_url not provided, using default");
+    }
+    
     // Validate all fields
     return validateDeviceName(creds.device_name) &&
            validateWiFiSSID(creds.wifi_ssid) &&
            validateWiFiPassword(creds.wifi_password) &&
            creds.admin_password.length() > 0 &&
-           validateVPSToken(creds.vps_token);
+           validateVPSToken(creds.vps_token) &&
+           validateVPSURL(creds.vps_url);        // 🆕 NEW
 }
+
+
+
 
 String readSerialLine() {
     String input = "";
@@ -612,4 +862,11 @@ void printHexDump(const uint8_t* data, size_t length) {
     }
 }
 
+
+
+
+
 #endif // ENABLE_CLI_INTERFACE
+
+
+
