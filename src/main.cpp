@@ -15,6 +15,12 @@
 #include "cli/cli_handler.h" 
 
 #if MODE_PROGRAMMING
+void setupProgrammingMode();
+#else  
+void setupProductionMode();
+#endif
+
+#if MODE_PROGRAMMING
     // Programming mode includes - tylko podstawowe
     // CLI będzie dodany później
 #else
@@ -31,6 +37,32 @@
     #include "web/web_server.h"
     #include "algorithm/water_algorithm.h"
 #endif
+
+
+
+void setup() {
+    // Initialize core systems
+    initLogging();
+    delay(5000); // Wait for serial monitor
+    
+    Serial.print("=== MODE: ");
+    Serial.print(MODE_NAME);
+    Serial.println(" ===");
+    
+    // Check ESP32 resources
+    Serial.print("ESP32 Flash size: ");
+    Serial.print(ESP.getFlashChipSize());
+    Serial.println(" bytes");
+    Serial.print("Free heap: ");
+    Serial.print(ESP.getFreeHeap());
+    Serial.println(" bytes");
+    
+#if MODE_PROGRAMMING
+    setupProgrammingMode();
+#else
+    setupProductionMode();
+#endif
+}
 
 // ===============================
 // MODE-SPECIFIC SETUP FUNCTIONS
@@ -142,29 +174,7 @@ void setupProductionMode() {
 // ARDUINO SETUP/LOOP
 // ===============================
 
-void setup() {
-    // Initialize core systems
-    delay(3000); // Wait for serial monitor
-    initLogging();
-    
-    Serial.print("=== MODE: ");
-    Serial.print(MODE_NAME);
-    Serial.println(" ===");
-    
-    // Check ESP32 resources
-    Serial.print("ESP32 Flash size: ");
-    Serial.print(ESP.getFlashChipSize());
-    Serial.println(" bytes");
-    Serial.print("Free heap: ");
-    Serial.print(ESP.getFreeHeap());
-    Serial.println(" bytes");
-    
-#if MODE_PROGRAMMING
-    setupProgrammingMode();
-#else
-    setupProductionMode();
-#endif
-}
+
 
 void loop() {
 #if MODE_PROGRAMMING

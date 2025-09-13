@@ -1,6 +1,7 @@
 #include "fram_encryption.h"
 #include "../core/logging.h"
 #include <cstring>
+#include <new> 
 
 // AES-256-CBC instance
 AES256_CBC aes_cbc;
@@ -30,9 +31,75 @@ bool generateRandomIV(uint8_t* iv) {
     return true;
 }
 
+// bool encryptData(const uint8_t* plaintext, size_t plaintext_len,
+//                  const uint8_t* key, const uint8_t* iv,
+//                  uint8_t* ciphertext, size_t* ciphertext_len) {
+    
+//     // Calculate padded length (must be multiple of 16)
+//     size_t padded_len = ((plaintext_len + 15) / 16) * 16;
+    
+//     // IMPORTANT: If plaintext_len is already multiple of 16, add full block
+//     if (plaintext_len % AES_BLOCK_SIZE == 0) {
+//         padded_len += AES_BLOCK_SIZE;
+//     }
+    
+//     if (padded_len > *ciphertext_len) {
+//         LOG_ERROR("Padded data larger than field size!");
+//         return false;
+//     }
+    
+//     // Create padded buffer
+//     uint8_t* padded_data = new uint8_t[*ciphertext_len];
+//     if (!padded_data) {
+//         return false; // Memory allocation failed
+//     }
+    
+//     // Initialize entire buffer with zeros
+//     memset(padded_data, 0, *ciphertext_len);
+    
+//     // Copy data and add PKCS7 padding
+//     memcpy(padded_data, plaintext, plaintext_len);
+//     size_t actual_padded_len = addPKCS7Padding(padded_data, plaintext_len, AES_BLOCK_SIZE);
+    
+//     // Set up AES-256-CBC
+//     aes_cbc.set_key(key);
+    
+//     // Extend 8-byte IV to 16-byte IV for AES
+//     uint8_t full_iv[16];
+//     for (int i = 0; i < 16; i++) {
+//         full_iv[i] = iv[i % 8];  // Note: 8-byte IV extended
+//     }
+//     aes_cbc.set_iv(full_iv);
+    
+//     // Encrypt the entire field (including any zeros at the end)
+//     if (!aes_cbc.encrypt(padded_data, *ciphertext_len, ciphertext)) {
+//         delete[] padded_data;
+//         return false;
+//     }
+    
+//     // ciphertext_len stays the same (full field size)
+    
+//     delete[] padded_data;
+//     return true;
+// }
+
+
+
+// ✅ FIX 1: Replace encryptData function with this safer version
 bool encryptData(const uint8_t* plaintext, size_t plaintext_len,
                  const uint8_t* key, const uint8_t* iv,
                  uint8_t* ciphertext, size_t* ciphertext_len) {
+    
+    // ✅ Input validation
+    if (!plaintext || !key || !iv || !ciphertext || !ciphertext_len) {
+        LOG_ERROR("Invalid parameters for encryption");
+        return false;
+    }
+    
+    if (plaintext_len == 0) {
+        LOG_ERROR("Empty plaintext");
+        return false;
+    }
     
     // Calculate padded length (must be multiple of 16)
     size_t padded_len = ((plaintext_len + 15) / 16) * 16;
@@ -47,13 +114,14 @@ bool encryptData(const uint8_t* plaintext, size_t plaintext_len,
         return false;
     }
     
-    // Create padded buffer
-    uint8_t* padded_data = new uint8_t[*ciphertext_len];
+    // ✅ FIX 1: Use std::nothrow to prevent exceptions
+    uint8_t* padded_data = new(std::nothrow) uint8_t[*ciphertext_len];
     if (!padded_data) {
+        LOG_ERROR("Failed to allocate %zu bytes for encryption buffer", *ciphertext_len);
         return false; // Memory allocation failed
     }
     
-    // Initialize entire buffer with zeros
+    // ✅ Initialize entire buffer with zeros
     memset(padded_data, 0, *ciphertext_len);
     
     // Copy data and add PKCS7 padding
@@ -70,23 +138,92 @@ bool encryptData(const uint8_t* plaintext, size_t plaintext_len,
     }
     aes_cbc.set_iv(full_iv);
     
-    // Encrypt the entire field (including any zeros at the end)
-    if (!aes_cbc.encrypt(padded_data, *ciphertext_len, ciphertext)) {
-        delete[] padded_data;
+    // ✅ FIX 1: Encrypt with proper cleanup on failure
+    bool success = aes_cbc.encrypt(padded_data, *ciphertext_len, ciphertext);
+    
+    // ✅ FIX 1: Secure cleanup - always clean sensitive data
+    secureZeroMemory(padded_data, *ciphertext_len);
+    delete[] padded_data;
+    
+    if (!success) {
+        LOG_ERROR("AES encryption failed");
         return false;
     }
     
     // ciphertext_len stays the same (full field size)
-    
-    delete[] padded_data;
     return true;
 }
 
+
+// bool decryptData(const uint8_t* ciphertext, size_t ciphertext_len,
+//                  const uint8_t* key, const uint8_t* iv,
+//                  uint8_t* plaintext, size_t* plaintext_len) {
+    
+//     if (ciphertext_len % AES_BLOCK_SIZE != 0) {
+//         return false;
+//     }
+    
+//     // Set up AES-256-CBC
+//     aes_cbc.set_key(key);
+    
+//     // Extend 8-byte IV to 16-byte IV for AES
+//     uint8_t full_iv[16];
+//     for (int i = 0; i < 16; i++) {
+//         full_iv[i] = iv[i % 8];  // Note: 8-byte IV extended
+//     }
+//     aes_cbc.set_iv(full_iv);
+    
+//     // Decrypt data
+//     if (!aes_cbc.decrypt(ciphertext, ciphertext_len, plaintext)) {
+//         return false;
+//     }
+    
+//     // Try to find valid PKCS7 padding by looking for non-zero data
+//     size_t actual_data_len = 0;
+    
+//     // Try to remove padding from blocks
+//     for (size_t try_len = AES_BLOCK_SIZE; try_len <= ciphertext_len; try_len += AES_BLOCK_SIZE) {
+//         size_t unpadded_len = removePKCS7Padding(plaintext, try_len);
+//         if (unpadded_len > 0) {
+//             actual_data_len = unpadded_len;
+//             break;
+//         }
+//     }
+    
+//     if (actual_data_len == 0) {
+//         LOG_ERROR("No valid PKCS7 padding found");
+//         return false;
+//     }
+    
+//     *plaintext_len = actual_data_len;
+//     return true;
+// }
+
+
+// ✅ FIX 1: Enhanced decryptData with better input validation
 bool decryptData(const uint8_t* ciphertext, size_t ciphertext_len,
                  const uint8_t* key, const uint8_t* iv,
                  uint8_t* plaintext, size_t* plaintext_len) {
     
+    // ✅ Input validation
+    if (!ciphertext || !key || !iv || !plaintext || !plaintext_len) {
+        LOG_ERROR("Invalid parameters for decryption");
+        return false;
+    }
+    
     if (ciphertext_len % AES_BLOCK_SIZE != 0) {
+        LOG_ERROR("Ciphertext length not multiple of block size");
+        return false;
+    }
+    
+    if (ciphertext_len == 0) {
+        LOG_ERROR("Empty ciphertext");
+        return false;
+    }
+    
+    // ✅ Check if output buffer is large enough
+    if (*plaintext_len < ciphertext_len) {
+        LOG_ERROR("Output buffer too small for decryption");
         return false;
     }
     
@@ -102,6 +239,9 @@ bool decryptData(const uint8_t* ciphertext, size_t ciphertext_len,
     
     // Decrypt data
     if (!aes_cbc.decrypt(ciphertext, ciphertext_len, plaintext)) {
+        LOG_ERROR("AES decryption failed");
+        // ✅ Clear sensitive data before returning error
+        secureZeroMemory(plaintext, ciphertext_len);
         return false;
     }
     
@@ -116,15 +256,30 @@ bool decryptData(const uint8_t* ciphertext, size_t ciphertext_len,
             break;
         }
     }
-    
-    if (actual_data_len == 0) {
+     if (actual_data_len == 0) {
         LOG_ERROR("No valid PKCS7 padding found");
+        // ✅ Clear sensitive data before returning error
+        secureZeroMemory(plaintext, ciphertext_len);
         return false;
     }
     
     *plaintext_len = actual_data_len;
     return true;
 }
+
+
+
+// ✅ FIX 1: Add secure memory cleanup helper
+void secureZeroMemory(void* ptr, size_t size) {
+    if (ptr && size > 0) {
+        volatile uint8_t* vptr = (volatile uint8_t*)ptr;
+        for (size_t i = 0; i < size; i++) {
+            vptr[i] = 0;
+        }
+    }
+}
+
+
 
 bool sha256Hash(const String& input, uint8_t* hash) {
     return sha256Hash((const uint8_t*)input.c_str(), input.length(), hash);

@@ -19,14 +19,30 @@ static bool pumpActive = false;
 static bool manualPumpActive = false;
 
 void initPumpController() {
+
+    // gpio_reset_pin(GPIO_NUM_2);  //added
+
     pinMode(PUMP_RELAY_PIN, OUTPUT);
     digitalWrite(PUMP_RELAY_PIN, LOW);
+
+    // LOG_INFO("GPIO Pin 2 configured as OUTPUT, initial state: LOW");   //added
     
     pumpRunning = false;
     LOG_INFO("Pump controller initialized");
 }
 
 void updatePumpController() {
+
+
+// added
+    //     static unsigned long lastGPIOCheck = 0;
+    // if (millis() - lastGPIOCheck > 30000) { // Every 30s
+    //     pinMode(PUMP_RELAY_PIN, OUTPUT); // Re-ensure OUTPUT mode
+    //     lastGPIOCheck = millis();
+    //     LOG_INFO("GPIO Pin 2 re-configured as OUTPUT");
+    // }
+
+    // added 
 
         // Check global pump state - stop if disabled
     if (!pumpGlobalEnabled && pumpRunning) {
@@ -101,34 +117,7 @@ bool triggerPump(uint16_t durationSeconds, const String& actionType) {
     return true;
 }
 
-// bool triggerPump(uint16_t durationSeconds, const String& actionType) {
 
-//     // Notify algorithm about manual pump
-//     if (!waterAlgorithm.requestManualPump(pumpDuration)) {
-//         LOG_WARNING("Algorithm rejected manual pump request");
-//         return false;
-//     }
-
-//     LOG_INFO("%s", "TRigger pump");
-//     if (pumpRunning) {
-//         LOG_WARNING("Pump already running, ignoring trigger");
-//         return false;
-//     }
-
-//         if (!pumpGlobalEnabled) {
-//         LOG_INFO("Pump trigger blocked - globally disabled");
-//         return false;
-//     }
-    
-//     digitalWrite(PUMP_RELAY_PIN, HIGH);
-//     pumpRunning = true;
-//     pumpStartTime = millis();
-//     pumpDuration = durationSeconds * 1000UL;
-//     currentActionType = actionType;
-    
-//     LOG_INFO("Pump started: %s for %d seconds", actionType.c_str(), durationSeconds);
-//     return true;
-// }
 
 bool isPumpActive() {
     return pumpRunning;

@@ -145,4 +145,6 @@ bool sha256Hash(const uint8_t* data, size_t len, uint8_t* hash);
 // Checksum calculation
 uint16_t calculateChecksum(const uint8_t* data, size_t size);
 
+void secureZeroMemory(void* ptr, size_t size);
+
 #endif

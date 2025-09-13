@@ -367,16 +367,43 @@ const char* DASHBOARD_HTML = R"rawliteral(
             }, 5000);
         }
         
+        // function triggerNormalPump() {
+        //     const btn = document.getElementById('normalBtn');
+        //     btn.disabled = true;
+        //     btn.textContent = 'Starting...';
+            
+        //     fetch('/api/pump/normal', { method: 'POST' })
+        //         .then(response => response.json())
+        //         .then(data => {
+        //             if (data.success) {
+        //                 showNotification(`Pump started for ${data.duration}s (${data.volume_ml}ml)`, 'success');
+        //             } else {
+        //                 showNotification('Failed to start pump', 'error');
+        //             }
+        //         })
+        //         .catch(() => showNotification('Connection error', 'error'))
+        //         .finally(() => {
+        //             btn.disabled = false;
+        //             btn.textContent = 'Normal Cycle';
+        //             updateStatus();
+        //         });
+        // }
         function triggerNormalPump() {
             const btn = document.getElementById('normalBtn');
             btn.disabled = true;
             btn.textContent = 'Starting...';
-            
+
             fetch('/api/pump/normal', { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
                         showNotification(`Pump started for ${data.duration}s (${data.volume_ml}ml)`, 'success');
+
+                        // ✅ NEW: Refresh statistics after pump completes
+                        setTimeout(() => {
+                            loadStatistics();
+                        }, (data.duration + 8) * 1000); // Load 8s after pump stops (during LOGGING_TIME)
+
                     } else {
                         showNotification('Failed to start pump', 'error');
                     }
@@ -388,7 +415,31 @@ const char* DASHBOARD_HTML = R"rawliteral(
                     updateStatus();
                 });
         }
+
+
+
         
+        // function triggerExtendedPump() {
+        //     const btn = document.getElementById('extendedBtn');
+        //     btn.disabled = true;
+        //     btn.textContent = 'Starting...';
+            
+        //     fetch('/api/pump/extended', { method: 'POST' })
+        //         .then(response => response.json())
+        //         .then(data => {
+        //             if (data.success) {
+        //                 showNotification(`Extended pump started for ${data.duration}s`, 'success');
+        //             } else {
+        //                 showNotification('Failed to start pump', 'error');
+        //             }
+        //         })
+        //         .catch(() => showNotification('Connection error', 'error'))
+        //         .finally(() => {
+        //             btn.disabled = false;
+        //             btn.textContent = 'Extended Cycle';
+        //             updateStatus();
+        //         });
+        // }
         function triggerExtendedPump() {
             const btn = document.getElementById('extendedBtn');
             btn.disabled = true;
@@ -399,6 +450,12 @@ const char* DASHBOARD_HTML = R"rawliteral(
                 .then(data => {
                     if (data.success) {
                         showNotification(`Extended pump started for ${data.duration}s`, 'success');
+                        
+                        // ✅ NEW: Refresh statistics after pump completes  
+                        setTimeout(() => {
+                            loadStatistics();
+                        }, (data.duration + 8) * 1000); // Load 8s after pump stops (during LOGGING_TIME)
+                        
                     } else {
                         showNotification('Failed to start pump', 'error');
                     }
@@ -410,6 +467,10 @@ const char* DASHBOARD_HTML = R"rawliteral(
                     updateStatus();
                 });
         }
+        
+
+
+
         
         function stopPump() {
             const btn = document.getElementById('stopBtn');
@@ -594,9 +655,9 @@ const char* DASHBOARD_HTML = R"rawliteral(
                     console.error('Status update failed:', error);
                 });
 
-                if (Date.now() % 10000 < 2000) {  // <-- DODAJ TĘ LOGIKĘ
-                    loadStatistics(); 
-                }
+                // if (Date.now() % 10000 < 2000) {  // <-- DODAJ TĘ LOGIKĘ
+                //     loadStatistics(); 
+                // }
                     // loadVolumePerSecond();        
         }
         
