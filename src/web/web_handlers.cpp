@@ -141,31 +141,6 @@ void handleLogout(AsyncWebServerRequest* request) {
     request->send(response);
 }
 
-// void handleStatus(AsyncWebServerRequest* request) {
-//     if (!checkAuthentication(request)) {
-//         request->send(401, "text/plain", "Unauthorized");
-//         return;
-//     }
-    
-//     JsonDocument json;
-//     json["water_status"] = getWaterStatus();
-//     json["pump_running"] = isPumpActive();
-//     json["pump_remaining"] = getPumpRemainingTime();
-//     json["wifi_status"] = getWiFiStatus();
-//     json["wifi_connected"] = isWiFiConnected();
-//     json["rtc_time"] = getCurrentTimestamp();
-//     json["rtc_working"] = isRTCWorking();
-//     json["rtc_info"] = getRTCInfo(); // Added RTC type information
-//     json["free_heap"] = ESP.getFreeHeap();
-//     json["uptime"] = millis();
-//     json["device_id"] = DEVICE_ID;
-    
-//     String response;
-//     serializeJson(json, response);
-//     request->send(200, "application/json", response);
-// }
-
-
 
 
 void handleStatus(AsyncWebServerRequest* request) {

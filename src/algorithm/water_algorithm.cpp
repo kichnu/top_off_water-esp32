@@ -88,9 +88,9 @@ void WaterAlgorithm::update() {
                 LOG_INFO("TRYB_1: TIME_GAP_1 timeout, using max: %ds", TIME_GAP_1_MAX);
                 
                 // Evaluate result
-                // if (sensor_time_match_function(currentCycle.time_gap_1, THRESHOLD_1)) {
-                //     currentCycle.sensor_results |= PumpCycle::RESULT_GAP1_FAIL;
-                // }
+                if (sensor_time_match_function(currentCycle.time_gap_1, THRESHOLD_1)) {
+                    currentCycle.sensor_results |= PumpCycle::RESULT_GAP1_FAIL;
+                }
                 
                 // Move to delay before pump
                 currentState = STATE_TRYB_1_DELAY;
