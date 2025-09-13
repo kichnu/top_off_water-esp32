@@ -4,6 +4,7 @@
 #include <Wire.h>
 #include <Adafruit_FRAM_I2C.h>
 #include "../algorithm/algorithm_config.h"
+#include "rtc_controller.h"
 
 #include "../crypto/fram_encryption.h"
 
@@ -482,7 +483,7 @@ bool loadErrorStatsFromFRAM(ErrorStats& stats) {
         stats.gap1_fail_sum = 0;
         stats.gap2_fail_sum = 0;
         stats.water_fail_sum = 0;
-        stats.last_reset_timestamp = millis() / 1000; // Current time as reset time
+        stats.last_reset_timestamp = getUnixTimestamp(); // Current time as reset time
         
         saveErrorStatsToFRAM(stats); // Save defaults
         return false;
@@ -540,7 +541,7 @@ bool resetErrorStatsInFRAM() {
     stats.gap1_fail_sum = 0;
     stats.gap2_fail_sum = 0;
     stats.water_fail_sum = 0;
-    stats.last_reset_timestamp = millis() / 1000; // Current time
+    stats.last_reset_timestamp = getUnixTimestamp(); // Current time
     
     bool success = saveErrorStatsToFRAM(stats);
     if (success) {

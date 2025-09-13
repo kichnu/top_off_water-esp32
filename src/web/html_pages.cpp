@@ -190,7 +190,11 @@ const char* DASHBOARD_HTML = R"rawliteral(
         .button.on-off:hover { background: #e0a800; }
         .button.danger { background: #dc3545; }
         .button.danger:hover { background: #c82333; }
-        .btn-calibration { background: #ddd; color: #333; width: 25%; margin-right: 25px;}
+        .btn-calibration { background: #dddddd; color: #333; width: 200px;}
+        .btn-calibration.btn-stat {width: 150px;}
+
+
+
         .btn-calibration:hover { background: #ccc; }
         .alert { 
             padding: 15px; margin: 15px 0; border-radius: 10px; font-weight: bold; 
@@ -200,32 +204,35 @@ const char* DASHBOARD_HTML = R"rawliteral(
         .stats-display {
             margin-top: 20px;
             padding: 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border: 1px solid #dee2e6;
+            /* background: #f8f9fa; */
+            /* border-radius: 8px; */
+            /* border: 1px solid #dee2e6; */
         }
         
         .stats-values {
             font-weight: bold;
-            font-size: 16px;
-            color: #2c3e50;
-            margin-bottom: 8px;
+            font-size: 14px;
+            margin-left: 15px;
+            margin-right: 30px;
+            /* color: #2c3e50; */
+            /* margin-bottom: 8px; */
         }
         
         .stats-values span {
-            color: #e74c3c;
+            /* color: #e74c3c; */
             font-weight: bold;
         }
         
         .stats-reset {
             font-size: 14px;
-            color: #6c757d;
-            width: 50%;
+            font-weight: bold;
+            margin-left: 15px;
+            /* color: #6c757d; */
+            /* width: 50%; */
         }
         
         @media (max-width: 600px) {
             .stats-reset {
-                width: 100%;
                 margin-top: 10px;
             }
             
@@ -236,14 +243,14 @@ const char* DASHBOARD_HTML = R"rawliteral(
         .alert.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .pump-controls{ 
-             display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+             display: flex; flex-wrap: wrap; justify-content:flex-start; align-items: center;
         }
         .pump-setting{
             display: flex; flex-direction: row;
 
         }
         .pump-setting-form{
-             display: flex; align-items: center; justify-content: center; gap: 15px;
+             display: flex; align-items: center; justify-content: center; gap: 15px; margin-left: 30px;
         }
         .pump-setting-form > label{
              font-weight: bold; font-size: 18px;
@@ -266,7 +273,7 @@ const char* DASHBOARD_HTML = R"rawliteral(
     </style>
 </head>
 <body>
-    <div class="container">
+        <div class="container">
         <div class="header">
             <button class="logout-btn" onclick="logout()">Logout</button>
             <h1> Top Off Water - System</h1>
@@ -315,20 +322,36 @@ const char* DASHBOARD_HTML = R"rawliteral(
                 <button id="onOffBtn" class="button on-off" onclick="togglePumpGlobal()">
                     Pump ON
                 </button>
-                <button id="resetStatsBtn" class="button btn-calibration" onclick="resetStatistics()">
-                    Reset Statistics
-                </button>
+            
             </div>
             
-            <!-- Statistics Display -->
-            <div class="stats-display">
-                <div class="stats-values" id="statsValues">
-                    Statistics: Gap1: <span id="gap1Value">-</span>, Gap2: <span id="gap2Value">-</span>, Water: <span id="waterValue">-</span>
+        </div>
+
+
+
+        <div class="card">
+            <h2>Statistic</h2>
+            <div class="pump-controls">
+                <div>
+                    <button id="loadStatsBtn" class="button btn-calibration btn-stat" onclick="manualLoadStatistics()">
+                        Load Statistics
+                    </button>
                 </div>
+                <div class="stats-values" id="statsValues">
+                    Err activate: <span id="gap1Value"></span> Err deactivate: <span id="gap2Value"></span> Err pump: <span id="waterValue"></span>
+                </div>
+                <div>
+                    <button id="resetStatsBtn" class="button btn-calibration btn-stat" onclick="resetStatistics()">
+                        Reset Statistics
+                    </button>
+                </div>
+
+                <!-- <div class="stats-display"> -->
                 <div class="stats-reset" id="statsReset">
                     Last Reset: <span id="resetTime">Loading...</span>
                 </div>
-            </div>
+                <!-- </div> -->
+            </div>     
         </div>
         
         <div class="card">
@@ -655,9 +678,9 @@ const char* DASHBOARD_HTML = R"rawliteral(
                     console.error('Status update failed:', error);
                 });
 
-                if (Date.now() % 30000 < 2000) {  // <-- DODAJ TĘ LOGIKĘ
-                    loadStatistics(); 
-                }
+                // if (Date.now() % 30000 < 2000) {  
+                //     loadStatistics(); 
+                // }
                     loadVolumePerSecond();        
         }
         
@@ -730,11 +753,25 @@ const char* DASHBOARD_HTML = R"rawliteral(
                 });
         }
 
+        function manualLoadStatistics() {
+            const btn = document.getElementById('loadStatsBtn');
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+
+            loadStatistics();
+
+            // Re-enable button after a short delay
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = 'Load Statistics';
+            }, 1000);
+        }
+
         // Auto-update pump state every 30 seconds
         setInterval(loadPumpGlobalState, 30000);
 
         loadVolumePerSecond();
-        // loadStatistics(); 
+        loadStatistics(); 
     </script>
 </body>
 </html>

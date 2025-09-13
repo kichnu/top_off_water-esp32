@@ -31,7 +31,7 @@ WaterAlgorithm::WaterAlgorithm() {
     loadCyclesFromStorage();
     
     pinMode(ERROR_SIGNAL_PIN, OUTPUT);
-    digitalWrite(ERROR_SIGNAL_PIN, LOW);
+    digitalWrite(ERROR_SIGNAL_PIN, HIGH);
     pinMode(RESET_PIN, INPUT_PULLUP);
 }
 
@@ -593,6 +593,7 @@ void WaterAlgorithm::startErrorSignal(ErrorCode error) {
     errorSignalStart = millis();
     errorPulseCount = 0;
     errorPulseState = false;
+    pinMode(ERROR_SIGNAL_PIN, OUTPUT);
     digitalWrite(ERROR_SIGNAL_PIN, LOW);
     
     LOG_ERROR("Starting error signal: %s", 
@@ -631,14 +632,16 @@ void WaterAlgorithm::updateErrorSignal() {
     // Update pin state
     if (shouldBeHigh != errorPulseState) {
         errorPulseState = shouldBeHigh;
-        digitalWrite(ERROR_SIGNAL_PIN, errorPulseState ? HIGH : LOW);
+        pinMode(ERROR_SIGNAL_PIN, OUTPUT);
+        digitalWrite(ERROR_SIGNAL_PIN, errorPulseState ? LOW : HIGH);
     }
 }
 
 void WaterAlgorithm::resetFromError() {
     lastError = ERROR_NONE;
     errorSignalActive = false;
-    digitalWrite(ERROR_SIGNAL_PIN, LOW);
+    pinMode(ERROR_SIGNAL_PIN, OUTPUT);
+    digitalWrite(ERROR_SIGNAL_PIN, HIGH);
     currentState = STATE_IDLE;
     resetCycle();
     LOG_INFO("System reset from error state");

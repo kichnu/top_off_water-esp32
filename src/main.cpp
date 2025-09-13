@@ -78,8 +78,8 @@ void setupProgrammingMode() {
     Serial.println();
     
     // Basic hardware initialization
-    pinMode(STATUS_LED_PIN, OUTPUT);
-    digitalWrite(STATUS_LED_PIN, HIGH);
+    // pinMode(STATUS_LED_PIN, OUTPUT);
+    // digitalWrite(STATUS_LED_PIN, HIGH);
     
     // Initialize RTC and FRAM
     initializeRTC();
@@ -94,7 +94,7 @@ void setupProgrammingMode() {
 
     initCLI();
     
-    digitalWrite(STATUS_LED_PIN, LOW);
+    // digitalWrite(STATUS_LED_PIN, LOW);
     
     Serial.println();
     Serial.println("=== PROGRAMMING MODE READY ===");
@@ -114,8 +114,8 @@ void setupProductionMode() {
     Serial.println("TEMPORARY_DEVICE_ID");
     
     // Initialize hardware
-    pinMode(STATUS_LED_PIN, OUTPUT);
-    digitalWrite(STATUS_LED_PIN, HIGH); 
+    // pinMode(STATUS_LED_PIN, OUTPUT);
+    // digitalWrite(STATUS_LED_PIN, HIGH); 
     initWaterSensors();
     initPumpController();
 
@@ -158,7 +158,7 @@ void setupProductionMode() {
     // Initialize web server
     initWebServer();
     
-    digitalWrite(STATUS_LED_PIN, LOW);
+    // digitalWrite(STATUS_LED_PIN, LOW);
     
     Serial.println("=== System initialization complete ===");
     if (isWiFiConnected()) {
@@ -187,6 +187,7 @@ void loop() {
     
     // Status LED heartbeat (slow blink in programming mode)
     if (now - lastBlink >= 1000) {
+        pinMode(STATUS_LED_PIN, OUTPUT);
         digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
         lastBlink = now;
     }
@@ -240,8 +241,18 @@ void loop() {
     static unsigned long lastBlink = 0;
     unsigned long blinkInterval = (isWiFiConnected() && isRTCWorking()) ? 2000 : 500;
     
+    // if (now - lastBlink >= blinkInterval) {
+    //     digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
+    //     lastBlink = now;
+    // }
+
     if (now - lastBlink >= blinkInterval) {
-        digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
+        // ✅ HEARTBEAT tylko gdy algorithm nie jest w stanie ERROR
+        if (waterAlgorithm.getState() != STATE_ERROR) {
+            pinMode(STATUS_LED_PIN, OUTPUT);
+            digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
+        }
+        // Gdy jest ERROR, error signal handling jest w water_algorithm.cpp
         lastBlink = now;
     }
     
