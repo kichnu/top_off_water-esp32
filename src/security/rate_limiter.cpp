@@ -121,8 +121,8 @@ void recordRequest(IPAddress ip) {
         }
     }
 
-    Serial.printf("[IP_DEBUG] Converting IP %s, Cache size: %zu, FreeHeap: %u\n", 
-              ipStr.c_str(), ipStringCache.size(), ESP.getFreeHeap());
+    // Serial.printf("[IP_DEBUG] Converting IP %s, Cache size: %zu, FreeHeap: %u\n", 
+    //           ipStr.c_str(), ipStringCache.size(), ESP.getFreeHeap());
 
 
 
@@ -162,11 +162,11 @@ void recordRequest(IPAddress ip) {
     static int requestCounter = 0;
     requestCounter++;
     
-    if (requestCounter % 50 == 0 || cleaned > 0 || hardLimitCleaned > 0) {
-        Serial.printf("[RATE_DEBUG] IP:%s Before:%zu→Cleaned:%zu→HardLimit:-%zu→Final:%zu | TotalIPs:%zu | FreeHeap:%u | Req#%d\n",
-            ipStr.c_str(), sizeBefore, cleaned, hardLimitCleaned, sizeFinal, 
-            totalIPsBefore, ESP.getFreeHeap(), requestCounter);
-    }
+    // if (requestCounter % 50 == 0 || cleaned > 0 || hardLimitCleaned > 0) {
+    //     Serial.printf("[RATE_DEBUG] IP:%s Before:%zu→Cleaned:%zu→HardLimit:-%zu→Final:%zu | TotalIPs:%zu | FreeHeap:%u | Req#%d\n",
+    //         ipStr.c_str(), sizeBefore, cleaned, hardLimitCleaned, sizeFinal, 
+    //         totalIPsBefore, ESP.getFreeHeap(), requestCounter);
+    // }
 }
 
 void recordFailedAttempt(IPAddress ip) {

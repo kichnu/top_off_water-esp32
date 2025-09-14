@@ -21,6 +21,8 @@ private:
     uint32_t lastPumpTime;
     bool permission_log;
 
+    bool waterFailDetected = false;  // 🆕 Track if any attempt failed
+
     // FRAM cycle management
     std::vector<PumpCycle> framCycles;    // Cykle załadowane z FRAM
     uint32_t lastFRAMCleanup;             // Ostatnie czyszczenie FRAM

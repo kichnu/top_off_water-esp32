@@ -58,6 +58,7 @@ void WaterAlgorithm::resetCycle() {
     pumpAttempts = 0;
     cycleLogged = false;
     permission_log = true;
+    waterFailDetected = false;
 }
 
 
@@ -154,6 +155,7 @@ void WaterAlgorithm::update() {
 
             static uint32_t lastStatusLog = 0;
             if (currentTime - lastStatusLog >= 5) { // Co 5 sekund
+
                 uint32_t timeSincePumpStart = currentTime - pumpStartTime;
                 LOG_INFO("TRYB_2_VERIFY: Waiting for sensors... %ds/%ds (attempt %d/%d)", 
                         timeSincePumpStart, WATER_TRIGGER_MAX_TIME, pumpAttempts, PUMP_MAX_ATTEMPTS);
@@ -189,6 +191,12 @@ void WaterAlgorithm::update() {
                 if (timeSincePumpStart >= WATER_TRIGGER_MAX_TIME) {
                     // Timeout - sensors didn't respond
                     currentCycle.water_trigger_time = WATER_TRIGGER_MAX_TIME;
+
+                        // 🆕 MARK FAIL on first timeout detection
+                    if (WATER_TRIGGER_MAX_TIME >= THRESHOLD_WATER) {
+                        waterFailDetected = true;  // Set flag, never reset
+                        LOG_INFO("WATER fail detected in attempt %d/%d", pumpAttempts, PUMP_MAX_ATTEMPTS);
+                    }
                     
                     LOG_WARNING("TRYB_2: Timeout after %ds (limit: %ds), attempt %d/%d", 
                             timeSincePumpStart, WATER_TRIGGER_MAX_TIME, 
@@ -458,6 +466,11 @@ void WaterAlgorithm::calculateWaterTrigger() {
         currentCycle.sensor_results |= PumpCycle::RESULT_WATER_FAIL;
         LOG_WARNING("No sensor release detected after pump start");
     }
+
+        if (currentCycle.water_trigger_time >= THRESHOLD_WATER) {
+        waterFailDetected = true;
+        LOG_INFO("WATER fail detected in successful attempt");
+    }
 }
 
 void WaterAlgorithm::logCycleComplete() {
@@ -476,6 +489,12 @@ void WaterAlgorithm::logCycleComplete() {
     uint16_t actualVolumeML = (uint16_t)(currentCycle.pump_duration * currentPumpSettings.volumePerSecond);
     currentCycle.volume_dose = actualVolumeML;
     currentCycle.pump_attempts = pumpAttempts;
+
+        // 🆕 DODAJ TUTAJ - SET final fail flag based on any failure
+    if (waterFailDetected) {
+        currentCycle.sensor_results |= PumpCycle::RESULT_WATER_FAIL;
+        LOG_INFO("Final WATER fail flag set due to timeout in any attempt");
+    }
     
     // Add to daily volume (use actual volume, not fixed SINGLE_DOSE_VOLUME)
     dailyVolumeML += actualVolumeML;
