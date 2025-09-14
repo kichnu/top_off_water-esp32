@@ -25,10 +25,19 @@ WaterAlgorithm::WaterAlgorithm() {
     todayCycles.clear(); //nowa metoda
 
     framDataLoaded = false;
+    
     lastFRAMCleanup = millis();
     framCycles.clear();
 
     loadCyclesFromStorage();
+
+    ErrorStats stats;
+
+    if (loadErrorStatsFromFRAM(stats)) {
+        LOG_INFO("✅ Error statistics loaded from FRAM at startup");
+    } else {
+        LOG_WARNING("⚠️ Could not load error stats from FRAM at startup");
+    }
     
     pinMode(ERROR_SIGNAL_PIN, OUTPUT);
     digitalWrite(ERROR_SIGNAL_PIN, HIGH);
