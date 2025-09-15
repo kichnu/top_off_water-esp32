@@ -211,9 +211,20 @@ void WaterAlgorithm::update() {
                         currentState = STATE_TRYB_1_DELAY;
                         stateStartTime = currentTime - TIME_TO_PUMP; // Immediate retry
                     } else {
-                        // All attempts failed - ERROR
+                        // // All attempts failed - ERROR
+                        // LOG_ERROR("TRYB_2: All %d pump attempts failed!", PUMP_MAX_ATTEMPTS);
+                        // currentCycle.error_code = ERROR_PUMP_FAILURE;
+                        // startErrorSignal(ERROR_PUMP_FAILURE);
+                        // currentState = STATE_ERROR;
+
+                            // All attempts failed - ERROR
                         LOG_ERROR("TRYB_2: All %d pump attempts failed!", PUMP_MAX_ATTEMPTS);
                         currentCycle.error_code = ERROR_PUMP_FAILURE;
+                                        
+                        // 🆕 DODAJ: Log failed cycle before ERROR state
+                        LOG_INFO("Logging failed cycle before entering ERROR state");
+                        logCycleComplete();
+                                        
                         startErrorSignal(ERROR_PUMP_FAILURE);
                         currentState = STATE_ERROR;
                     }
