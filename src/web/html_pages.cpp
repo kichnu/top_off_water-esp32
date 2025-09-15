@@ -1,27 +1,8 @@
-// #include "html_pages.h"
-
-
-
-
-
-
-
-
 
 #include "html_pages.h"
 #include "../mode_config.h"
 
 #if ENABLE_WEB_SERVER
-
-// ... RESZTA KODU POZOSTAJE BEZ ZMIAN ...
-
-
-
-
-
-
-
-
 
 const char* LOGIN_HTML = R"rawliteral(
 <!DOCTYPE html>
@@ -491,10 +472,6 @@ const char* DASHBOARD_HTML = R"rawliteral(
         //         });
         // }
         
-
-
-
-        
         function stopPump() {
             const btn = document.getElementById('stopBtn');
             btn.disabled = true;
@@ -516,10 +493,6 @@ const char* DASHBOARD_HTML = R"rawliteral(
                     updateStatus();
                 });
         }
-
-
-
-
 
         // Load current volume setting
         function loadVolumePerSecond() {
@@ -648,9 +621,6 @@ const char* DASHBOARD_HTML = R"rawliteral(
             }
         }
 
-
-                          
-        
         function updateStatus() {
             fetch('/api/status')
                 .then(response => response.json())
@@ -784,6 +754,5 @@ String getLoginHTML() {
 String getDashboardHTML() {
     return String(DASHBOARD_HTML);
 } 
-
 
 #endif // ENABLE_WEB_SERVER

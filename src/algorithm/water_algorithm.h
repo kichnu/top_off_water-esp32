@@ -75,8 +75,6 @@ public:
     // Sensor inputs
     void onSensorStateChange(uint8_t sensorNum, bool triggered);
     
-
-    
     // Status and data access
     AlgorithmState getState() const { return currentState; }
     const char* getStateString() const;

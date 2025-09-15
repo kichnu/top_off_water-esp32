@@ -1,6 +1,4 @@
 
-
-
 #ifndef CREDENTIALS_MANAGER_H
 #define CREDENTIALS_MANAGER_H
 

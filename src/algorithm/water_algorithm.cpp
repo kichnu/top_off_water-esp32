@@ -10,7 +10,6 @@
 #include "../network/vps_logger.h"
 #include "../hardware/rtc_controller.h"  // <-- DODAJ I TĘ LINIĘ
 
-
 WaterAlgorithm waterAlgorithm;
 
 WaterAlgorithm::WaterAlgorithm() {
@@ -60,7 +59,6 @@ void WaterAlgorithm::resetCycle() {
     permission_log = true;
     waterFailDetected = false;
 }
-
 
 void WaterAlgorithm::update() {
     // Check for reset button in error state
@@ -138,8 +136,7 @@ void WaterAlgorithm::update() {
                 stateStartTime = currentTime;
             }
             break;
-   
-            
+               
         case STATE_TRYB_2_PUMP:
 
             // Pump is running, wait for completion
@@ -162,7 +159,6 @@ void WaterAlgorithm::update() {
                 lastStatusLog = currentTime;
             }
 
-            
             // Check if sensors deactivated (water level rose)
             bool sensorsOK = !readWaterSensor1() && !readWaterSensor2();
             
@@ -211,12 +207,6 @@ void WaterAlgorithm::update() {
                         currentState = STATE_TRYB_1_DELAY;
                         stateStartTime = currentTime - TIME_TO_PUMP; // Immediate retry
                     } else {
-                        // // All attempts failed - ERROR
-                        // LOG_ERROR("TRYB_2: All %d pump attempts failed!", PUMP_MAX_ATTEMPTS);
-                        // currentCycle.error_code = ERROR_PUMP_FAILURE;
-                        // startErrorSignal(ERROR_PUMP_FAILURE);
-                        // currentState = STATE_ERROR;
-
                             // All attempts failed - ERROR
                         LOG_ERROR("TRYB_2: All %d pump attempts failed!", PUMP_MAX_ATTEMPTS);
                         currentCycle.error_code = ERROR_PUMP_FAILURE;
@@ -229,7 +219,6 @@ void WaterAlgorithm::update() {
                         currentState = STATE_ERROR;
                     }
                 }
-                // Else: continue waiting for sensors
             }
             break;
         }
@@ -250,11 +239,6 @@ void WaterAlgorithm::update() {
                 waitingForSecondSensor = false;
                 LOG_INFO("TRYB_2: TIME_GAP_2 calculated successfully");
                 
-                // Evaluate result
-                // if (sensor_time_match_function(currentCycle.time_gap_2, THRESHOLD_2)) {
-                //     currentCycle.sensor_results |= PumpCycle::RESULT_GAP2_FAIL;
-                // }
-                
                 currentState = STATE_LOGGING;
                 stateStartTime = currentTime;
             } else if (stateElapsed >= TIME_GAP_2_MAX) {
@@ -267,12 +251,7 @@ void WaterAlgorithm::update() {
 
                 LOG_WARNING("TRYB_2: TIME_GAP_2 timeout - s1Release=%ds, s2Release=%ds", 
                         sensor1ReleaseTime, sensor2ReleaseTime);
-                
-                // Evaluate result
-                // if (sensor_time_match_function(currentCycle.time_gap_2, THRESHOLD_2)) {
-                //     currentCycle.sensor_results |= PumpCycle::RESULT_GAP2_FAIL;
-                // }
-                
+              
                 currentState = STATE_LOGGING;
                 stateStartTime = currentTime;
             }
@@ -342,13 +321,6 @@ void WaterAlgorithm::onSensorStateChange(uint8_t sensorNum, bool triggered) {
                 currentState = STATE_TRYB_1_WAIT;
                 stateStartTime = currentTime;
                 waitingForSecondSensor = true;
-                
-                // Record which sensor triggered first
-                // if (sensorNum == 1 && !sensor2TriggerTime) {
-                //     LOG_INFO("Sensor 1 triggered first");
-                // } else if (sensorNum == 2 && !sensor1TriggerTime) {
-                //     LOG_INFO("Sensor 2 triggered first");
-                // }
             }
             break;
             
@@ -387,14 +359,6 @@ void WaterAlgorithm::onSensorStateChange(uint8_t sensorNum, bool triggered) {
     }
 }
 
-// void WaterAlgorithm::calculateTimeGap1() {
-
-//     if (sensor1TriggerTime && sensor2TriggerTime) {
-//         currentCycle.time_gap_1 = abs((int32_t)sensor2TriggerTime - 
-//                                       (int32_t)sensor1TriggerTime);
-//     } 
-// }
-
 void WaterAlgorithm::calculateTimeGap1() {
     if (sensor1TriggerTime && sensor2TriggerTime) {
         currentCycle.time_gap_1 = abs((int32_t)sensor2TriggerTime - 
@@ -413,16 +377,6 @@ void WaterAlgorithm::calculateTimeGap1() {
                    sensor1TriggerTime, sensor2TriggerTime);
     }
 }
-
-// void WaterAlgorithm::calculateTimeGap2() {
-//     if (sensor1ReleaseTime && sensor2ReleaseTime) {
-//         // Oblicz różnicę w sekundach (bez dzielenia przez 1000!)
-//         currentCycle.time_gap_2 = abs((int32_t)sensor2ReleaseTime - 
-//                                       (int32_t)sensor1ReleaseTime);
-        
-//         LOG_INFO("TIME_GAP_2 calculated: %ds", currentCycle.time_gap_2);
-//     }
-// }
 
 void WaterAlgorithm::calculateTimeGap2() {
     if (sensor1ReleaseTime && sensor2ReleaseTime) {
@@ -580,8 +534,6 @@ bool WaterAlgorithm::requestManualPump(uint16_t duration_ms) {
     return true;
 }
 
-
-
 void WaterAlgorithm::onManualPumpComplete() {
     if (currentState == STATE_MANUAL_OVERRIDE) {
         LOG_INFO("Manual pump complete, returning to IDLE");
@@ -608,18 +560,6 @@ const char* WaterAlgorithm::getStateString() const {
 bool WaterAlgorithm::isInCycle() const {
     return currentState != STATE_IDLE && currentState != STATE_ERROR;
 }
-
-// void WaterAlgorithm::getAggregateData(uint8_t& xx, uint8_t& yy, uint8_t& zz, uint16_t& vvvv) {
-//     // Calculate sums from FRAM data (14 days)
-//     calculateAggregateFromFRAM(xx, yy, zz);
-    
-//     // Daily volume (current 24h)
-//     vvvv = dailyVolumeML;
-    
-//     LOG_INFO("Aggregate data: %02d-%02d-%02d-%04d", xx, yy, zz, vvvv);
-// }
-
-
 
 std::vector<PumpCycle> WaterAlgorithm::getRecentCycles(size_t count) {
     size_t start = todayCycles.size() > count ? todayCycles.size() - count : 0;
@@ -769,33 +709,6 @@ bool WaterAlgorithm::getErrorStatistics(uint16_t& gap1_sum, uint16_t& gap2_sum, 
     
     return success;
 }
-
-// void WaterAlgorithm::calculateAggregateFromFRAM(uint8_t& xx, uint8_t& yy, uint8_t& zz) {
-//     xx = yy = zz = 0;
-    
-//     // Calculate cutoff time for 14 days
-//     uint32_t cutoffTime = (millis() / 1000) - (14 * 24 * 3600);
-    
-//     // Use FRAM data if available, otherwise fall back to RAM
-//     const auto& cyclesToUse = framDataLoaded ? framCycles : todayCycles;
-    
-//     for (const auto& cycle : cyclesToUse) {
-//         // Only count cycles from last 14 days
-//         if (cycle.timestamp >= cutoffTime) {
-//             if (cycle.sensor_results & PumpCycle::RESULT_GAP1_FAIL) xx++;
-//             if (cycle.sensor_results & PumpCycle::RESULT_GAP2_FAIL) yy++;
-//             if (cycle.sensor_results & PumpCycle::RESULT_WATER_FAIL) zz++;
-//         }
-//     }
-    
-//     // Cap at 99 as per specification
-//     if (xx > 99) xx = 99;
-//     if (yy > 99) yy = 99;
-//     if (zz > 99) zz = 99;
-    
-//     LOG_INFO("Aggregate calculated from %s: XX=%d, YY=%d, ZZ=%d", 
-//              framDataLoaded ? "FRAM" : "RAM", xx, yy, zz);
-// }
 
 
 

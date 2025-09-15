@@ -1,29 +1,6 @@
-// #include "web_handlers.h"
-// #include "web_server.h"
-// #include "html_pages.h"
-// #include "../security/auth_manager.h"
-// #include "../security/session_manager.h"
-// #include "../security/rate_limiter.h"
-// #include "../hardware/pump_controller.h"
-// #include "../hardware/water_sensors.h"
-// #include "../hardware/rtc_controller.h"
-// #include "../network/wifi_manager.h"
-// #include "../config/config.h"
-// #include "../core/logging.h"
-// #include <ArduinoJson.h>
-// #include "../config/config.h"
-
-// #include "../algorithm/water_algorithm.h"
-
-
-
-
-
 
 #include "web_handlers.h"
 #include "../mode_config.h"
-
-
 
 #if ENABLE_WEB_SERVER
     #include "web_server.h"
@@ -40,14 +17,7 @@
     #include <ArduinoJson.h>
     #include "../config/config.h"
     #include "../algorithm/water_algorithm.h"
-
     // ... RESZTA KODU POZOSTAJE BEZ ZMIAN ...
-
-
-
-
-
-
 void handleDashboard(AsyncWebServerRequest* request) {
     if (!checkAuthentication(request)) {
         request->redirect("/login");
@@ -140,8 +110,6 @@ void handleLogout(AsyncWebServerRequest* request) {
     response->addHeader("Set-Cookie", "session_token=; Path=/; HttpOnly; Max-Age=0");
     request->send(response);
 }
-
-
 
 void handleStatus(AsyncWebServerRequest* request) {
     if (!checkAuthentication(request)) {

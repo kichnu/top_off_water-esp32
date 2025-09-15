@@ -13,10 +13,4 @@
 #define ERROR_SIGNAL_PIN    2   // 9 Pin sygnalizacji błędów ERR0/1/2
 #define RESET_PIN          8  // Pin fizycznego resetu
 
-
-// // Timing constants
-// #define DEBOUNCE_DELAY_MS   2000         // 2 seconds debouncing
-// #define PUMP_DEFAULT_TIME   15           // 15 seconds default pump time
-// #define STATUS_UPDATE_MS    2000         // 2 seconds status refresh
-
 #endif

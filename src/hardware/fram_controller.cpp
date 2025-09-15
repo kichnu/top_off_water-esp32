@@ -602,14 +602,10 @@ bool incrementErrorStats(uint8_t gap1_increment, uint8_t gap2_increment, uint8_t
     return success;
 }
 
-
 // ===============================
 // FRAM CREDENTIALS SECTION  
 // (Shared with FRAM Programmer)
 // ===============================
-
-
-
 bool readCredentialsFromFRAM(FRAMCredentials& creds) {
     if (!framInitialized) {
         LOG_ERROR("FRAM not initialized for credentials read");
@@ -645,46 +641,6 @@ bool writeCredentialsToFRAM(const FRAMCredentials& creds) {
     LOG_INFO("Credentials written to FRAM at address 0x%04X", FRAM_CREDENTIALS_ADDR);
     return true;
 }
-
-// bool verifyCredentialsInFRAM() {
-//     if (!framInitialized) {
-//         LOG_ERROR("FRAM not initialized for credentials verify");
-//         return false;
-//     }
-    
-//     FRAMCredentials creds;
-//     if (!readCredentialsFromFRAM(creds)) {
-//         return false;
-//     }
-    
-//     // Check magic number
-//     if (creds.magic != FRAM_MAGIC_NUMBER) {
-//         LOG_WARNING("Invalid credentials magic number: 0x%08X", creds.magic);
-//         return false;
-//     }
-    
-//     // Check version (accept both v1 and v2)
-//     if (creds.version != 0x0001 && creds.version != FRAM_DATA_VERSION) {
-//         LOG_WARNING("Invalid credentials version: %d", creds.version);
-//         return false;
-//     }
-    
-//     // Verify checksum
-//     size_t checksum_offset = offsetof(FRAMCredentials, checksum);
-//     uint16_t calculated_checksum = calculateChecksum((uint8_t*)&creds, checksum_offset);
-    
-//     if (creds.checksum != calculated_checksum) {
-//         LOG_WARNING("Credentials checksum mismatch: stored=%d, calculated=%d", 
-//                     creds.checksum, calculated_checksum);
-//         return false;
-//     }
-    
-//     LOG_INFO("Credentials verification successful");
-//     return true;
-// }
-
-
-
 
 bool verifyCredentialsInFRAM() {
     if (!framInitialized) {

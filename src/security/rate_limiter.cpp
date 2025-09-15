@@ -7,8 +7,6 @@
 
 static std::map<uint32_t, String> ipStringCache;
 
-
-
 struct RateLimitData {
     std::vector<unsigned long> requestTimes;
     int failedAttempts;
@@ -67,39 +65,6 @@ bool isRateLimited(IPAddress ip) {
     return data.requestTimes.size() >= MAX_REQUESTS_PER_SECOND;
 }
 
-// void recordRequest(IPAddress ip) {
-//     String ipStr = ip.toString();
-//     unsigned long now = millis();
-    
-//     RateLimitData& data = rateLimitData[ipStr];
-//     data.requestTimes.push_back(now);
-//     data.lastRequest = now;
-// }
-
-// void recordRequest(IPAddress ip) {
-//     String ipStr = ip.toString();
-//     unsigned long now = millis();
-    
-//     RateLimitData& data = rateLimitData[ipStr];
-    
-//     // ✅ CZYŚĆ STARE przed dodaniem nowego
-//     data.requestTimes.erase(
-//         std::remove_if(data.requestTimes.begin(), data.requestTimes.end(),
-//                       [now](unsigned long time) { 
-//                           return now - time > RATE_LIMIT_WINDOW_MS; 
-//                       }),
-//         data.requestTimes.end());
-    
-//     // ✅ HARD LIMIT - maksymalnie 20 timestampów
-//     if (data.requestTimes.size() >= 20) {
-//         data.requestTimes.erase(data.requestTimes.begin(), 
-//                                data.requestTimes.begin() + 10);
-//     }
-    
-//     data.requestTimes.push_back(now);
-//     data.lastRequest = now;
-// }
-
 void recordRequest(IPAddress ip) {
         // ✅ CACHE dla IP string conversion
     uint32_t ipUint = ip;
@@ -121,12 +86,6 @@ void recordRequest(IPAddress ip) {
         }
     }
 
-    // Serial.printf("[IP_DEBUG] Converting IP %s, Cache size: %zu, FreeHeap: %u\n", 
-    //           ipStr.c_str(), ipStringCache.size(), ESP.getFreeHeap());
-
-
-
-    
     RateLimitData& data = rateLimitData[ipStr];
     
     // 🔍 DEBUGGING - rozmiar PRZED czyszczeniem
@@ -161,12 +120,6 @@ void recordRequest(IPAddress ip) {
     // 🔍 LOG co 50 requestów LUB gdy było czyszczenie
     static int requestCounter = 0;
     requestCounter++;
-    
-    // if (requestCounter % 50 == 0 || cleaned > 0 || hardLimitCleaned > 0) {
-    //     Serial.printf("[RATE_DEBUG] IP:%s Before:%zu→Cleaned:%zu→HardLimit:-%zu→Final:%zu | TotalIPs:%zu | FreeHeap:%u | Req#%d\n",
-    //         ipStr.c_str(), sizeBefore, cleaned, hardLimitCleaned, sizeFinal, 
-    //         totalIPsBefore, ESP.getFreeHeap(), requestCounter);
-    // }
 }
 
 void recordFailedAttempt(IPAddress ip) {
@@ -191,11 +144,9 @@ bool isIPBlocked(IPAddress ip) {
     if (isIPAllowed(ip)) {
         return false;
     }
-    
     String ipStr = ip.toString();
     if (rateLimitData.find(ipStr) == rateLimitData.end()) {
         return false;
     }
-    
     return rateLimitData[ipStr].blockUntil > millis();
 }

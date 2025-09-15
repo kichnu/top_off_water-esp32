@@ -33,17 +33,6 @@ void initPumpController() {
 
 void updatePumpController() {
 
-
-// added
-    //     static unsigned long lastGPIOCheck = 0;
-    // if (millis() - lastGPIOCheck > 30000) { // Every 30s
-    //     pinMode(PUMP_RELAY_PIN, OUTPUT); // Re-ensure OUTPUT mode
-    //     lastGPIOCheck = millis();
-    //     LOG_INFO("GPIO Pin 2 re-configured as OUTPUT");
-    // }
-
-    // added 
-
         // Check global pump state - stop if disabled
     if (!pumpGlobalEnabled && pumpRunning) {
         digitalWrite(PUMP_RELAY_PIN, LOW);
@@ -69,10 +58,6 @@ void updatePumpController() {
             logEventToVPS(currentActionType, volumeML, getCurrentTimestamp());
         }
         currentActionType = "";         
-        
-        // Log to VPS
-        // logEventToVPS(currentActionType, volumeML, getCurrentTimestamp());
-        // currentActionType = "";
     }
 
       static bool wasManualActive = false;

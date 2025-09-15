@@ -38,8 +38,6 @@ void setupProductionMode();
     #include "algorithm/water_algorithm.h"
 #endif
 
-
-
 void setup() {
     // Initialize core systems
     initLogging();
@@ -63,7 +61,6 @@ void setup() {
     setupProductionMode();
 #endif
 }
-
 // ===============================
 // MODE-SPECIFIC SETUP FUNCTIONS
 // ===============================
@@ -76,11 +73,7 @@ void setupProgrammingMode() {
     Serial.println("    Programming Mode - CLI Interface");
     Serial.println("========================================");
     Serial.println();
-    
-    // Basic hardware initialization
-    // pinMode(STATUS_LED_PIN, OUTPUT);
-    // digitalWrite(STATUS_LED_PIN, HIGH);
-    
+
     // Initialize RTC and FRAM
     initializeRTC();
     Serial.print("RTC Status: ");
@@ -108,14 +101,9 @@ void setupProductionMode() {
     Serial.println("=== ESP32-C3 Water System Starting ===");
     Serial.println("Production Mode - Full Water System");
     Serial.print("Device ID: ");
-    
-    // TEMPORARY: Still using hardcoded credentials
-    // Will be replaced with FRAM loading later
+
     Serial.println("TEMPORARY_DEVICE_ID");
-    
-    // Initialize hardware
-    // pinMode(STATUS_LED_PIN, OUTPUT);
-    // digitalWrite(STATUS_LED_PIN, HIGH); 
+
     initWaterSensors();
     initPumpController();
 
@@ -132,15 +120,7 @@ void setupProductionMode() {
     } else {
         Serial.println("FALLBACK_MODE");
     }
-    
-    //  // *** NOWE: Initialize credentials manager ***
-    // if (initCredentialsManager()) {
-    //     Serial.print("Device ID: ");
-    //     Serial.println(getDeviceID());
-    // } else {
-    //     Serial.println("⚠️ Using fallback credentials");
-    // }
-    
+ 
     // Initialize RTC
     initializeRTC();
     Serial.print("RTC Status: ");
@@ -173,8 +153,6 @@ void setupProductionMode() {
 // ===============================
 // ARDUINO SETUP/LOOP
 // ===============================
-
-
 
 void loop() {
 #if MODE_PROGRAMMING
@@ -255,7 +233,6 @@ void loop() {
         // Gdy jest ERROR, error signal handling jest w water_algorithm.cpp
         lastBlink = now;
     }
-    
     delay(100);
 #endif
 }

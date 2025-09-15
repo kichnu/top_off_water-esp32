@@ -2,40 +2,17 @@
 #include "../config/config.h"
 #include "../core/logging.h"
 
-
 // ✅ FIX 3: Add session limits to prevent memory exhaustion
 static const size_t MAX_TOTAL_SESSIONS = 10;       // Maximum total sessions
 static const size_t MAX_SESSIONS_PER_IP = 3;       // Maximum sessions per IP
 
-
 std::vector<Session> activeSessions;
-
-// void initSessionManager() {
-//     activeSessions.clear();
-//     LOG_INFO("Session manager initialized");
-// }
-
 
 void initSessionManager() {
     activeSessions.clear();
     activeSessions.reserve(MAX_TOTAL_SESSIONS); // Pre-allocate to avoid reallocations
     LOG_INFO("Session manager initialized (max %zu sessions)", MAX_TOTAL_SESSIONS);
 }
-
-// void updateSessionManager() {
-//     unsigned long now = millis();
-    
-//     for (auto it = activeSessions.begin(); it != activeSessions.end();) {
-//         if (!it->isValid || (now - it->lastActivity > SESSION_TIMEOUT_MS)) {
-//             LOG_INFO("Removing expired session for IP: %s", it->ip.toString().c_str());
-//             it = activeSessions.erase(it);
-//         } else {
-//             ++it;
-//         }
-//     }
-// }
-
-
 // ✅ Helper function to remove oldest session if needed
 void removeOldestSessionIfNeeded() {
     if (activeSessions.size() >= MAX_TOTAL_SESSIONS) {
@@ -55,7 +32,6 @@ void removeOldestSessionIfNeeded() {
     }
 }
 
-
 // ✅ Helper function to count sessions for specific IP
 size_t countSessionsForIP(IPAddress ip) {
     size_t count = 0;
@@ -66,7 +42,6 @@ size_t countSessionsForIP(IPAddress ip) {
     }
     return count;
 }
-
 
 void updateSessionManager() {
     unsigned long now = millis();
@@ -81,35 +56,8 @@ void updateSessionManager() {
     }
 }
 
-// String createSession(IPAddress ip) {
-//     // Remove existing sessions for this IP
-//     for (auto it = activeSessions.begin(); it != activeSessions.end();) {
-//         if (it->ip == ip) {
-//             it = activeSessions.erase(it);
-//         } else {
-//             ++it;
-//         }
-//     }
-    
-//     Session newSession;
-//     newSession.token = "";
-//     for (int i = 0; i < 32; i++) {
-//         newSession.token += String(random(0, 16), HEX);
-//     }
-//     newSession.ip = ip;
-//     newSession.createdAt = millis();
-//     newSession.lastActivity = millis();
-//     newSession.isValid = true;
-    
-//     activeSessions.push_back(newSession);
-    
-//     LOG_INFO("Session created for IP: %s", ip.toString().c_str());
-//     return newSession.token;
-// }
-
 String createSession(IPAddress ip) {
     // ✅ FIX 3: Check session limits before creating new session
-    
     // Check per-IP limit
     size_t sessionsForIP = countSessionsForIP(ip);
     if (sessionsForIP >= MAX_SESSIONS_PER_IP) {
@@ -164,22 +112,6 @@ String createSession(IPAddress ip) {
     return newSession.token;
 }
 
-
-
-// bool validateSession(const String& token, IPAddress ip) {
-//     for (auto& session : activeSessions) {
-//         if (session.token == token && session.ip == ip && session.isValid) {
-//             if (millis() - session.lastActivity > SESSION_TIMEOUT_MS) {
-//                 session.isValid = false;
-//                 return false;
-//             }
-//             session.lastActivity = millis();
-//             return true;
-//         }
-//     }
-//     return false;
-// }
-
 bool validateSession(const String& token, IPAddress ip) {
     if (token.length() == 0) {
         return false;
@@ -199,18 +131,6 @@ bool validateSession(const String& token, IPAddress ip) {
     return false;
 }
 
-
-
-// void destroySession(const String& token) {
-//     for (auto it = activeSessions.begin(); it != activeSessions.end(); ++it) {
-//         if (it->token == token) {
-//             activeSessions.erase(it);
-//             break;
-//         }
-//     }
-// }
-
-
 void destroySession(const String& token) {
     for (auto it = activeSessions.begin(); it != activeSessions.end(); ++it) {
         if (it->token == token) {
@@ -220,7 +140,6 @@ void destroySession(const String& token) {
         }
     }
 }
-
 
 // ✅ New diagnostic function for monitoring
 void getSessionStats(size_t& totalSessions, size_t& maxSessions) {

@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 #include "web_server.h"
 #include "../mode_config.h"
 
