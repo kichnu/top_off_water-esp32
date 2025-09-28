@@ -35,6 +35,26 @@ An intelligent, automated water management system built on ESP32-C3, featuring a
 - **Statistical Tracking** - Error counts, performance metrics, and trends
 - **Real-Time Clock Integration** - Accurate timestamping with DS3231 or internal RTC fallback
 
+### RTC Recovery Logic
+- **Normal operation**  
+  When a DS3231 is detected and initialized successfully, it becomes the primary source of time.  
+
+- **Power loss on DS3231**  
+  If the DS3231 reports that it has lost power, the firmware automatically restores time from the **firmware compile timestamp** (`__DATE__`, `__TIME__`).  
+  This ensures the RTC always has a valid baseline time, even after a complete power failure.  
+
+- **No DS3231 detected**  
+  If no external RTC is found on the I²C bus, the system falls back to the **ESP32 internal RTC**.  
+  - First, it tries to obtain system time (`getLocalTime`).  
+  - If that fails, it falls back to the **firmware compile timestamp**.  
+
+- **Important notes**  
+  - After recovery, the reported time may be **behind the real current time** (reset to firmware build date).  
+  - For applications requiring precise or real-time synchronization, it is recommended to **set the time manually via CLI/API** after such an event.  
+  - API endpoints (e.g. `/api/status`) will always indicate which time source is in use via the `rtc_info` field:  
+    - `"Using DS3231 external RTC"`  
+    - `"Using ESP32 internal RTC (fallback mode)"` 
+
 ### Safety & Security
 - **IP Whitelisting** - Restrict access to authorized devices
 - **Session Management** - Secure token-based authentication

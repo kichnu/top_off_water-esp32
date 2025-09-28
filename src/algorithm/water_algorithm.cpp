@@ -39,7 +39,7 @@ WaterAlgorithm::WaterAlgorithm() {
     }
     
     pinMode(ERROR_SIGNAL_PIN, OUTPUT);
-    digitalWrite(ERROR_SIGNAL_PIN, HIGH);
+    digitalWrite(ERROR_SIGNAL_PIN, LOW);
     pinMode(RESET_PIN, INPUT_PULLUP);
 }
 
@@ -612,7 +612,7 @@ void WaterAlgorithm::updateErrorSignal() {
     if (shouldBeHigh != errorPulseState) {
         errorPulseState = shouldBeHigh;
         pinMode(ERROR_SIGNAL_PIN, OUTPUT);
-        digitalWrite(ERROR_SIGNAL_PIN, errorPulseState ? LOW : HIGH);
+        digitalWrite(ERROR_SIGNAL_PIN, errorPulseState ? HIGH : LOW);
     }
 }
 
@@ -620,7 +620,7 @@ void WaterAlgorithm::resetFromError() {
     lastError = ERROR_NONE;
     errorSignalActive = false;
     pinMode(ERROR_SIGNAL_PIN, OUTPUT);
-    digitalWrite(ERROR_SIGNAL_PIN, HIGH);
+    digitalWrite(ERROR_SIGNAL_PIN, LOW);
     currentState = STATE_IDLE;
     resetCycle();
     LOG_INFO("System reset from error state");
@@ -680,14 +680,32 @@ void WaterAlgorithm::saveCycleToStorage(const PumpCycle& cycle) {
     }
 }
 
+// bool WaterAlgorithm::resetErrorStatistics() {
+//     bool success = resetErrorStatsInFRAM();
+//     if (success) {
+//         LOG_INFO("Error statistics reset requested via web interface");
+//         // Termopary turn off$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+//         // Log reset event to VPS
+//         String timestamp = getCurrentTimestamp();
+//         logEventToVPS("STATISTICS_RESET", 0, timestamp);
+//     }
+//     return success;
+// }
+
 bool WaterAlgorithm::resetErrorStatistics() {
     bool success = resetErrorStatsInFRAM();
     if (success) {
         LOG_INFO("Error statistics reset requested via web interface");
         
-        // Log reset event to VPS
+        // ✅ PRZYWRÓĆ VPS logging z short timeout (3 seconds max)
         String timestamp = getCurrentTimestamp();
-        logEventToVPS("STATISTICS_RESET", 0, timestamp);
+        bool vpsSuccess = logEventToVPS("STATISTICS_RESET", 0, timestamp);
+        
+        if (vpsSuccess) {
+            LOG_INFO("✅ Statistics reset + VPS logging: SUCCESS");
+        } else {
+            LOG_WARNING("⚠️ Statistics reset: SUCCESS, VPS logging: FAILED (non-critical)");
+        }
     }
     return success;
 }

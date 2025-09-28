@@ -87,8 +87,6 @@ void setupProgrammingMode() {
 
     initCLI();
     
-    // digitalWrite(STATUS_LED_PIN, LOW);
-    
     Serial.println();
     Serial.println("=== PROGRAMMING MODE READY ===");
     Serial.println("CLI interface will be available here");
@@ -137,9 +135,7 @@ void setupProductionMode() {
     
     // Initialize web server
     initWebServer();
-    
-    // digitalWrite(STATUS_LED_PIN, LOW);
-    
+      
     Serial.println("=== System initialization complete ===");
     if (isWiFiConnected()) {
         Serial.print("Dashboard: http://");
@@ -164,11 +160,11 @@ void loop() {
     handleCLI();
     
     // Status LED heartbeat (slow blink in programming mode)
-    if (now - lastBlink >= 1000) {
-        pinMode(STATUS_LED_PIN, OUTPUT);
-        digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
-        lastBlink = now;
-    }
+    // if (now - lastBlink >= 1000) {
+    //     pinMode(STATUS_LED_PIN, OUTPUT);
+    //     digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
+    //     lastBlink = now;
+    // }
     
     // CLI handling will be added here
     delay(10);
@@ -224,15 +220,15 @@ void loop() {
     //     lastBlink = now;
     // }
 
-    if (now - lastBlink >= blinkInterval) {
-        // ✅ HEARTBEAT tylko gdy algorithm nie jest w stanie ERROR
-        if (waterAlgorithm.getState() != STATE_ERROR) {
-            pinMode(STATUS_LED_PIN, OUTPUT);
-            digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
-        }
-        // Gdy jest ERROR, error signal handling jest w water_algorithm.cpp
-        lastBlink = now;
-    }
+    // if (now - lastBlink >= blinkInterval) {
+    //     // ✅ HEARTBEAT tylko gdy algorithm nie jest w stanie ERROR
+    //     if (waterAlgorithm.getState() != STATE_ERROR) {
+    //         pinMode(STATUS_LED_PIN, OUTPUT);
+    //         digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
+    //     }
+    //     // Gdy jest ERROR, error signal handling jest w water_algorithm.cpp
+    //     lastBlink = now;
+    // }
     delay(100);
 #endif
 }

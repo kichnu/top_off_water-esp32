@@ -23,7 +23,7 @@ void initPumpController() {
     // gpio_reset_pin(GPIO_NUM_2);  //added
 
     pinMode(PUMP_RELAY_PIN, OUTPUT);
-    digitalWrite(PUMP_RELAY_PIN, LOW);
+    digitalWrite(PUMP_RELAY_PIN, HIGH);
 
     // LOG_INFO("GPIO Pin 2 configured as OUTPUT, initial state: LOW");   //added
     
@@ -35,7 +35,7 @@ void updatePumpController() {
 
         // Check global pump state - stop if disabled
     if (!pumpGlobalEnabled && pumpRunning) {
-        digitalWrite(PUMP_RELAY_PIN, LOW);
+        digitalWrite(PUMP_RELAY_PIN, HIGH);
         pumpRunning = false;
         LOG_INFO("Pump stopped - globally disabled");
         return;
@@ -43,7 +43,7 @@ void updatePumpController() {
 
     if (pumpRunning && (millis() - pumpStartTime >= pumpDuration)) {
         // Stop pump and log event
-        digitalWrite(PUMP_RELAY_PIN, LOW);
+        digitalWrite(PUMP_RELAY_PIN, HIGH);
         pumpRunning = false;
         
         uint16_t actualDuration = (millis() - pumpStartTime) / 1000;
@@ -92,7 +92,7 @@ bool triggerPump(uint16_t durationSeconds, const String& actionType) {
     }
     // Dla AUTO_PUMP nie wywołuj requestManualPump!
     
-    digitalWrite(PUMP_RELAY_PIN, HIGH);
+    digitalWrite(PUMP_RELAY_PIN, LOW);
     pumpRunning = true;
     pumpStartTime = millis();
     pumpDuration = durationSeconds * 1000UL;
@@ -119,7 +119,7 @@ uint32_t getPumpRemainingTime() {
 
 void stopPump() {
     if (pumpRunning) {
-        digitalWrite(PUMP_RELAY_PIN, LOW);
+        digitalWrite(PUMP_RELAY_PIN, HIGH);
         pumpRunning = false;
         LOG_INFO("Pump manually stopped");
     }

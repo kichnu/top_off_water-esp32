@@ -25,6 +25,71 @@ void initVPSLogger() {
 #endif
 }
 
+// bool logEventToVPS(const String& eventType, uint16_t volumeML, const String& timestamp) {
+//     // Skip logging if pump globally disabled
+//     if (!pumpGlobalEnabled) {
+//         return false;
+//     }
+
+//     if (!isWiFiConnected()) {
+//         LOG_WARNING("WiFi not connected, cannot log to VPS");
+//         return false;
+//     }
+    
+//     HTTPClient http;
+    
+// #if MODE_PRODUCTION
+//     // Production mode: use dynamic VPS URL and credentials
+//     const char* vpsUrl = getVPSURL();
+//     http.begin(vpsUrl);
+    
+//     String authHeader = "Bearer " + String(getVPSAuthToken());
+//     http.addHeader("Authorization", authHeader);
+    
+//     JsonDocument payload;
+//     payload["device_id"] = getDeviceID();
+    
+//     LOG_INFO("Using dynamic VPS URL: %s", vpsUrl);
+// #else
+//     // Programming mode: use hardcoded credentials
+//     http.begin(VPS_URL);
+    
+//     String authHeader = "Bearer " + String(VPS_AUTH_TOKEN);
+//     http.addHeader("Authorization", authHeader);
+    
+//     JsonDocument payload;
+//     payload["device_id"] = DEVICE_ID;
+// #endif
+    
+//     http.addHeader("Content-Type", "application/json");
+//     http.setTimeout(10000);
+    
+//     payload["timestamp"] = timestamp;
+//     payload["unix_time"] = getUnixTimestamp();
+//     payload["event_type"] = eventType;
+//     payload["volume_ml"] = volumeML;
+//     payload["water_status"] = getWaterStatus();
+//     payload["system_status"] = "OK";
+    
+//     String jsonString;
+//     serializeJson(payload, jsonString);
+    
+//     LOG_INFO("Sending to VPS: %s", jsonString.c_str());
+    
+//     int httpCode = http.POST(jsonString);
+    
+//     if (httpCode == 200) {
+//         LOG_INFO("VPS log successful: %s", eventType.c_str());
+//         http.end();
+//         return true;
+//     } else {
+//         LOG_ERROR("VPS log failed: HTTP %d", httpCode);
+//         http.end();
+//         return false;
+//     }
+// }
+
+
 bool logEventToVPS(const String& eventType, uint16_t volumeML, const String& timestamp) {
     // Skip logging if pump globally disabled
     if (!pumpGlobalEnabled) {
@@ -34,6 +99,21 @@ bool logEventToVPS(const String& eventType, uint16_t volumeML, const String& tim
     if (!isWiFiConnected()) {
         LOG_WARNING("WiFi not connected, cannot log to VPS");
         return false;
+    }
+    
+    // ✅ DYNAMIC TIMEOUT based on event criticality
+    uint16_t timeoutMs;
+    bool isCritical;
+    
+    if (eventType == "STATISTICS_RESET") {
+        timeoutMs = 3000;    // 3 seconds for non-critical reset
+        isCritical = false;
+    } else if (eventType == "AUTO_CYCLE_COMPLETE") {
+        timeoutMs = 8000;    // 8 seconds for important cycle data
+        isCritical = true;
+    } else {
+        timeoutMs = 5000;    // 5 seconds for other events
+        isCritical = true;
     }
     
     HTTPClient http;
@@ -49,7 +129,7 @@ bool logEventToVPS(const String& eventType, uint16_t volumeML, const String& tim
     JsonDocument payload;
     payload["device_id"] = getDeviceID();
     
-    LOG_INFO("Using dynamic VPS URL: %s", vpsUrl);
+    LOG_INFO("Using dynamic VPS URL: %s (timeout: %dms)", vpsUrl, timeoutMs);
 #else
     // Programming mode: use hardcoded credentials
     http.begin(VPS_URL);
@@ -62,7 +142,9 @@ bool logEventToVPS(const String& eventType, uint16_t volumeML, const String& tim
 #endif
     
     http.addHeader("Content-Type", "application/json");
-    http.setTimeout(10000);
+    
+    // ✅ SET DYNAMIC TIMEOUT
+    http.setTimeout(timeoutMs);
     
     payload["timestamp"] = timestamp;
     payload["unix_time"] = getUnixTimestamp();
@@ -74,16 +156,26 @@ bool logEventToVPS(const String& eventType, uint16_t volumeML, const String& tim
     String jsonString;
     serializeJson(payload, jsonString);
     
-    LOG_INFO("Sending to VPS: %s", jsonString.c_str());
+    LOG_INFO("Sending to VPS (%s priority): %s", 
+             isCritical ? "HIGH" : "LOW", 
+             jsonString.c_str());
     
+    unsigned long startTime = millis();
     int httpCode = http.POST(jsonString);
+    unsigned long duration = millis() - startTime;
     
     if (httpCode == 200) {
-        LOG_INFO("VPS log successful: %s", eventType.c_str());
+        LOG_INFO("✅ VPS log successful: %s (%lums)", eventType.c_str(), duration);
         http.end();
         return true;
     } else {
-        LOG_ERROR("VPS log failed: HTTP %d", httpCode);
+        // ✅ DIFFERENT LOG LEVELS based on criticality
+        if (isCritical) {
+            LOG_ERROR("❌ VPS log failed: %s HTTP %d (%lums)", eventType.c_str(), httpCode, duration);
+        } else {
+            LOG_WARNING("⚠️ VPS log failed (non-critical): %s HTTP %d (%lums)", eventType.c_str(), httpCode, duration);
+        }
+        
         http.end();
         return false;
     }
