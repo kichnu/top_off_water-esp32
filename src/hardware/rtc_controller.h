@@ -9,4 +9,7 @@ bool isRTCWorking();
 unsigned long getUnixTimestamp();
 String getRTCInfo(); // New diagnostic function
 
+String getTimeSourceInfo();
+bool isRTCHardware();
+
 #endif

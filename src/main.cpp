@@ -94,12 +94,62 @@ void setupProgrammingMode() {
     Serial.println();
 }
 #else
+// void setupProductionMode() {
+//     Serial.println();
+//     Serial.println("=== ESP32-C3 Water System Starting ===");
+//     Serial.println("Production Mode - Full Water System");
+//     Serial.print("Device ID: ");
+
+//     Serial.println("TEMPORARY_DEVICE_ID");
+
+//     initWaterSensors();
+//     initPumpController();
+
+//     // Initialize storage and load settings
+//     initNVS(); 
+//     loadVolumeFromNVS();
+
+//     bool credentials_loaded = initCredentialsManager();
+    
+//     // *** Print Device ID AFTER credentials loading ***
+//     Serial.print("Device ID: ");
+//     if (credentials_loaded) {
+//         Serial.println(getDeviceID());
+//     } else {
+//         Serial.println("FALLBACK_MODE");
+//     }
+ 
+//     // Initialize RTC
+//     initializeRTC();
+//     Serial.print("RTC Status: ");
+//     Serial.println(getRTCInfo());
+    
+//     // Initialize security
+//     initAuthManager();
+//     initSessionManager();
+//     initRateLimiter();
+    
+//     // Initialize network
+//     initWiFi();
+//     initVPSLogger();
+    
+//     // Initialize web server
+//     initWebServer();
+      
+//     Serial.println("=== System initialization complete ===");
+//     if (isWiFiConnected()) {
+//         Serial.print("Dashboard: http://");
+//         Serial.println(getLocalIP().toString());
+//     }
+//     Serial.print("Current time: ");
+//     Serial.println(getCurrentTimestamp());
+// }
+
 void setupProductionMode() {
     Serial.println();
     Serial.println("=== ESP32-C3 Water System Starting ===");
     Serial.println("Production Mode - Full Water System");
     Serial.print("Device ID: ");
-
     Serial.println("TEMPORARY_DEVICE_ID");
 
     initWaterSensors();
@@ -119,7 +169,11 @@ void setupProductionMode() {
         Serial.println("FALLBACK_MODE");
     }
  
-    // Initialize RTC
+    // 🆕 CHANGED: Initialize WiFi BEFORE RTC (for NTP sync)
+    Serial.println("[INIT] Initializing network...");
+    initWiFi();
+    
+    // 🆕 CHANGED: Initialize RTC AFTER WiFi (can use NTP)
     initializeRTC();
     Serial.print("RTC Status: ");
     Serial.println(getRTCInfo());
@@ -129,13 +183,12 @@ void setupProductionMode() {
     initSessionManager();
     initRateLimiter();
     
-    // Initialize network
-    initWiFi();
+    // Initialize VPS logger
     initVPSLogger();
     
     // Initialize web server
     initWebServer();
-      
+    
     Serial.println("=== System initialization complete ===");
     if (isWiFiConnected()) {
         Serial.print("Dashboard: http://");

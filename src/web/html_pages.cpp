@@ -245,6 +245,11 @@ const char* DASHBOARD_HTML = R"rawliteral(
         }
 
 
+        .rtc-error {
+            color: #e74c3c !important;
+        }
+
+
         @media (max-width: 600px) {
             .status-grid { grid-template-columns: 1fr; }
             .pump-controls, .pomp-setting { flex-direction: column; }
@@ -633,7 +638,18 @@ const char* DASHBOARD_HTML = R"rawliteral(
                     // Enhanced RTC display with type information
                     const rtcText = data.rtc_time || 'Error';
                     const rtcInfo = data.rtc_info || '';
-                    document.getElementById('rtcTime').innerHTML = `${rtcText}<br><small style="color: #666; font-size: 0.8em;">${rtcInfo}</small>`;
+                    // document.getElementById('rtcTime').innerHTML = `${rtcText}<br><small style="color: #666; font-size: 0.8em;">${rtcInfo}</small>`;
+
+                    const rtcElement = document.getElementById('rtcTime');
+
+                    rtcElement.innerHTML = `${rtcText}<br><small style="color: #666; font-size: 0.8em;">${rtcInfo}</small>`;
+
+                    // 🆕 NEW: Red color when RTC hardware not working
+                    if (data.rtc_hardware === false) {
+                        rtcElement.classList.add('rtc-error');
+                    } else {
+                        rtcElement.classList.remove('rtc-error');
+                    }
                     
                     document.getElementById('freeHeap').textContent = (data.free_heap / 1024).toFixed(1) + ' KB';
                     document.getElementById('uptime').textContent = formatUptime(data.uptime);

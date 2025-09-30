@@ -4,6 +4,15 @@
 #include <Wire.h>
 #include <RTClib.h>
 
+#include <WiFi.h>
+#include <time.h>
+#include "../network/wifi_manager.h"
+
+// NTP Configuration
+const char* NTP_SERVER = "216.239.35.0"; 
+const long GMT_OFFSET_SEC = 3600;      // UTC+1 (CET) - dostosuj do swojej strefy
+const int DAYLIGHT_OFFSET_SEC = 0;     // Bez DST
+
 RTC_DS3231 rtc;
 bool rtcInitialized = false;
 bool useInternalRTC = false;
@@ -18,6 +27,43 @@ struct {
     int second = 0;
     unsigned long lastUpdate = 0;
 } internalTime;
+
+
+// 🆕 NEW: Synchronize time with NTP server
+bool syncTimeFromNTP() {
+    if (!isWiFiConnected()) {
+        LOG_WARNING("Cannot sync NTP - WiFi not connected");
+        return false;
+    }
+    
+    LOG_INFO("Attempting NTP synchronization from %s...", NTP_SERVER);
+    
+    // Configure NTP
+    configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
+    
+    // Wait for NTP sync (max 10 seconds)
+    int attempts = 0;
+    time_t now = 0;
+    struct tm timeinfo;
+    
+    while (attempts < 40) {  // 40 * 500ms = 20 seconds
+        time(&now);
+        if (now > 1600000000) {  // Valid timestamp (after 2020)
+            localtime_r(&now, &timeinfo);
+            
+            char timeStr[64];
+            strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
+            LOG_INFO("✅ NTP sync successful: %s", timeStr);
+            
+            return true;
+        }
+        delay(500);
+        attempts++;
+    }
+    
+    LOG_ERROR("❌ NTP synchronization failed after 10 seconds");
+    return false;
+}
 
 void initializeRTC() {
     LOG_INFO("Starting RTC initialization...");
@@ -38,38 +84,225 @@ void initializeRTC() {
         
         // Try to initialize DS3231
         if (rtc.begin()) {
-            LOG_INFO("DS3231 RTC initialized successfully");
-            
-            // Check if RTC lost power
+
+            // Check if RTC lost power (OSF flag)
             if (rtc.lostPower()) {
-                LOG_WARNING("RTC lost power, setting time from compile time");
-                rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+                LOG_WARNING("RTC lost power detected - battery was removed or died");
+                LOG_INFO("Attempting to restore RTC from compile time...");
+
+                // Try to set RTC time from compile time to clear OSF flag
+                DateTime compileTime = DateTime(F(__DATE__), F(__TIME__));
+                rtc.adjust(compileTime);
+
+                delay(100);  // Give RTC time to update
+
+                // Check if OSF flag was cleared
+                if (rtc.lostPower()) {
+                    // OSF still set - RTC hardware problem or battery really dead
+                    LOG_ERROR("Failed to clear RTC OSF flag - switching to system time fallback");
+
+                    useInternalRTC = true;
+                    rtcInitialized = true;
+
+                    // Initialize internal time
+                    char month_str[4];
+                    int day, year, hour, min, sec;
+                    sscanf(__DATE__, "%s %d %d", month_str, &day, &year);
+                    sscanf(__TIME__, "%d:%d:%d", &hour, &min, &sec);
+
+                    const char* months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+                    int month = 1;
+                    for (int i = 0; i < 12; i++) {
+                        if (strncmp(month_str, months[i], 3) == 0) {
+                            month = i + 1;
+                            break;
+                        }
+                    }
+
+                    internalTime.year = year;
+                    internalTime.month = month;
+                    internalTime.day = day;
+                    internalTime.hour = hour;
+                    internalTime.minute = min;
+                    internalTime.second = sec;
+                    internalTime.lastUpdate = millis();
+
+                    LOG_INFO("System time fallback active");
+                    return;
+                } else {
+                    // OSF cleared successfully - RTC restored!
+                    LOG_INFO("✅ RTC OSF flag cleared - DS3231 restored from compile time");
+                    LOG_WARNING("⚠️ RTC time may be inaccurate (compile time: %s)", 
+                               compileTime.timestamp().c_str());
+                    // Continue with normal RTC verification below
+                }
             }
-            
-            // Verify RTC is working by reading time
+
+            // Verify RTC time is reasonable
             DateTime now = rtc.now();
-            if (now.year() >= 2020 && now.year() <= 2030) {
+            LOG_INFO("RTC current time: %04d-%02d-%02d %02d:%02d:%02d", 
+                     now.year(), now.month(), now.day(),
+                     now.hour(), now.minute(), now.second());
+
+
+            // 🆕 NEW: Check if RTC is not older than compile time
+            DateTime compileTime = DateTime(F(__DATE__), F(__TIME__));
+            if (now.unixtime() < compileTime.unixtime()) {
+                LOG_WARNING("⚠️ RTC time is OLDER than compile time!");
+                LOG_WARNING("   RTC:     %s", now.timestamp().c_str());
+                LOG_WARNING("   Compile: %s", compileTime.timestamp().c_str());
+                LOG_WARNING("   This indicates RTC lost power or has stale time");
+                LOG_INFO("Attempting to fix RTC with NTP...");
+
+                if (syncTimeFromNTP()) {
+                    time_t ntp_time;
+                    time(&ntp_time);
+                    rtc.adjust(DateTime(ntp_time));
+
+                    DateTime newTime = rtc.now();
+                    LOG_INFO("✅ RTC restored from NTP: %04d-%02d-%02d %02d:%02d:%02d",
+                             newTime.year(), newTime.month(), newTime.day(),
+                             newTime.hour(), newTime.minute(), newTime.second());
+                    
+                    rtcInitialized = true;
+                    useInternalRTC = false;
+                    LOG_INFO("External RTC verification successful");
+                    return;
+                } else {
+                    LOG_WARNING("NTP sync failed, switching to system time fallback");
+                    useInternalRTC = true;
+                    rtcInitialized = true;
+
+                    // Initialize from compile time
+                    char month_str[4];
+                    int day, year, hour, min, sec;
+                    sscanf(__DATE__, "%s %d %d", month_str, &day, &year);
+                    sscanf(__TIME__, "%d:%d:%d", &hour, &min, &sec);
+
+                    const char* months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+                    int month = 1;
+                    for (int i = 0; i < 12; i++) {
+                        if (strncmp(month_str, months[i], 3) == 0) {
+                            month = i + 1;
+                            break;
+                        }
+                    }
+
+                    internalTime.year = year;
+                    internalTime.month = month;
+                    internalTime.day = day;
+                    internalTime.hour = hour;
+                    internalTime.minute = min;
+                    internalTime.second = sec;
+                    internalTime.lastUpdate = millis();
+
+                    LOG_INFO("System time fallback active from compile time");
+                    return;
+                }
+            }         
+
+
+
+
+
+
+
+
+
+
+
+
+            
+            // Check all time components
+            bool timeValid = true;
+            if (now.year() < 2020 || now.year() > 2030) {
+                LOG_ERROR("RTC year invalid: %d (expected 2020-2030)", now.year());
+                timeValid = false;
+            }
+            if (now.month() < 1 || now.month() > 12) {
+                LOG_ERROR("RTC month invalid: %d", now.month());
+                timeValid = false;
+            }
+
+            if (now.day() < 1 || now.day() > 31) {
+                LOG_ERROR("RTC day invalid: %d", now.day());
+                timeValid = false;
+            }
+
+            if (!timeValid) {
+                LOG_ERROR("RTC has invalid time components");
+                LOG_INFO("Attempting to fix RTC with NTP time...");
+                
+                // Try NTP sync first
+                if (syncTimeFromNTP()) {
+                    // NTP sync successful - set RTC
+                    time_t ntp_time;
+                    time(&ntp_time);
+                    
+                    rtc.adjust(DateTime(ntp_time));
+                    
+                    DateTime newTime = rtc.now();
+                    LOG_INFO("✅ RTC restored from NTP: %04d-%02d-%02d %02d:%02d:%02d",
+                             newTime.year(), newTime.month(), newTime.day(),
+                             newTime.hour(), newTime.minute(), newTime.second());
+                    
+                    // RTC now has valid time - use it!
+                    rtcInitialized = true;
+                    useInternalRTC = false;
+                    LOG_INFO("External RTC verification successful");
+                    return;
+                } else {
+                    // NTP failed - use system time fallback
+                    LOG_WARNING("NTP sync failed, switching to system time fallback");
+                    
+                    useInternalRTC = true;
+                    rtcInitialized = true;
+                    
+                    // Initialize from compile time
+                    char month_str[4];
+                    int day, year, hour, min, sec;
+                    sscanf(__DATE__, "%s %d %d", month_str, &day, &year);
+                    sscanf(__TIME__, "%d:%d:%d", &hour, &min, &sec);
+                    
+                    const char* months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+                    int month = 1;
+                    for (int i = 0; i < 12; i++) {
+                        if (strncmp(month_str, months[i], 3) == 0) {
+                            month = i + 1;
+                            break;
+                        }
+                    }
+                    
+                    internalTime.year = year;
+                    internalTime.month = month;
+                    internalTime.day = day;
+                    internalTime.hour = hour;
+                    internalTime.minute = min;
+                    internalTime.second = sec;
+                    internalTime.lastUpdate = millis();
+                    
+                    LOG_INFO("System time fallback active from compile time");
+                    return;
+                }
+            } else {
+                // RTC time is VALID - use it!
+                LOG_INFO("✅ RTC time verification successful");
                 rtcInitialized = true;
                 useInternalRTC = false;
-                LOG_INFO("External RTC verification successful");
-                LOG_INFO("Current time: %s", getCurrentTimestamp().c_str());
                 return;
-            } else {
-                LOG_ERROR("RTC time invalid: %d-%02d-%02d", now.year(), now.month(), now.day());
             }
+
         } else {
             LOG_ERROR("Failed to initialize DS3231 RTC");
         }
+
     } else {
         LOG_WARNING("DS3231 not found on I2C bus (error: %d)", error);
     }
     
-    // Fallback to ESP32 internal RTC
-    LOG_INFO("Falling back to ESP32 internal RTC");
-    useInternalRTC = true;
-    rtcInitialized = true;
-    
-    // Set initial time from compile time
     struct tm timeinfo;
     if (!getLocalTime(&timeinfo, 100)) {
         LOG_WARNING("Failed to get system time, using compile time");
@@ -150,7 +383,7 @@ String getCurrentTimestamp() {
         }
         
         char timeBuffer[32];
-        snprintf(timeBuffer, sizeof(timeBuffer), "%04d-%02d-%02d %02d:%02d:%02d (INT)",
+        snprintf(timeBuffer, sizeof(timeBuffer), "%04d-%02d-%02d %02d:%02d:%02d",
                  internalTime.year, internalTime.month, internalTime.day,
                  internalTime.hour, internalTime.minute, internalTime.second);
         
@@ -160,7 +393,7 @@ String getCurrentTimestamp() {
         DateTime now = rtc.now();
         
         char timeBuffer[32];
-        snprintf(timeBuffer, sizeof(timeBuffer), "%04d-%02d-%02d %02d:%02d:%02d (EXT)",
+        snprintf(timeBuffer, sizeof(timeBuffer), "%04d-%02d-%02d %02d:%02d:%02d",
                  now.year(), now.month(), now.day(),
                  now.hour(), now.minute(), now.second());
         
@@ -217,4 +450,21 @@ String getRTCInfo() {
     } else {
         return "Using DS3231 external RTC";
     }
+}
+
+String getTimeSourceInfo() {
+    if (!rtcInitialized) {
+        return "RTC not initialized";
+    }
+    
+    if (useInternalRTC) {
+        return "Using ESP32 system time";
+    } else {
+        return "Using DS3231 external RTC";
+    }
+}
+
+// 🆕 NEW: Check if using hardware RTC
+bool isRTCHardware() {
+    return rtcInitialized && !useInternalRTC;
 }
