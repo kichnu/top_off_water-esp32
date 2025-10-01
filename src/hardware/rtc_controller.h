@@ -12,4 +12,10 @@ String getRTCInfo(); // New diagnostic function
 String getTimeSourceInfo();
 bool isRTCHardware();
 
+// Dodaj na końcu pliku .h:
+void periodicNTPSync();                    // Call from main loop
+bool rtcNeedsSynchronization();            // Check if time needs sync
+void initInternalTimeFromCompileTime();    // Helper function
+bool setRTCFromNTP();                      // Attempt NTP sync and set RTC
+
 #endif

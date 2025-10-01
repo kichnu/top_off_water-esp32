@@ -247,6 +247,8 @@ void loop() {
     waterAlgorithm.update();
     checkWaterSensors();
     checkPumpAutoEnable();
+
+    periodicNTPSync();  // Sprawdza co godzinę czy trzeba synchronizować
     
     // Update other systems every 100ms
     if (now - lastUpdate >= 100) {
