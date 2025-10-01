@@ -129,6 +129,8 @@ void handleStatus(AsyncWebServerRequest* request) {
     json["rtc_info"] = getTimeSourceInfo();    // 🆕 CHANGED
     json["rtc_hardware"] = isRTCHardware(); 
 
+    json["rtc_needs_sync"] = rtcNeedsSynchronization();
+
     // json["rtc_info"] = getRTCInfo();
     json["free_heap"] = ESP.getFreeHeap();
     json["uptime"] = millis();

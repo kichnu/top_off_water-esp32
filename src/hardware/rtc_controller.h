@@ -18,4 +18,6 @@ bool rtcNeedsSynchronization();            // Check if time needs sync
 void initInternalTimeFromCompileTime();    // Helper function
 bool setRTCFromNTP();                      // Attempt NTP sync and set RTC
 
+bool rtcNeedsSynchronization();
+
 #endif

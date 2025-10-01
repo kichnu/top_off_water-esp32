@@ -635,17 +635,22 @@ const char* DASHBOARD_HTML = R"rawliteral(
                         `Active (${data.pump_remaining}s remaining)` : 'Inactive';
                     document.getElementById('wifiStatus').textContent = data.wifi_status;
                     
-                    // Enhanced RTC display with type information
+                    // RTC display with battery warning
                     const rtcText = data.rtc_time || 'Error';
                     const rtcInfo = data.rtc_info || '';
-                    // document.getElementById('rtcTime').innerHTML = `${rtcText}<br><small style="color: #666; font-size: 0.8em;">${rtcInfo}</small>`;
-
                     const rtcElement = document.getElementById('rtcTime');
-
-                    rtcElement.innerHTML = `${rtcText}<br><small style="color: #666; font-size: 0.8em;">${rtcInfo}</small>`;
-
-                    // 🆕 NEW: Red color when RTC hardware not working
-                    if (data.rtc_hardware === false) {
+                    
+                    let rtcHTML = rtcText;
+                    
+                    if (data.rtc_needs_sync === true) {
+                        rtcHTML += '<br><small style="color: #e74c3c; font-size: 0.8em; font-weight: bold;">⚠️ Battery may be dead - replace CR2032</small>';
+                    } else {
+                        rtcHTML += `<br><small style="color: #666; font-size: 0.8em;">${rtcInfo}</small>`;
+                    }
+                    
+                    rtcElement.innerHTML = rtcHTML;
+                    
+                    if (data.rtc_hardware === false || data.rtc_needs_sync === true) {
                         rtcElement.classList.add('rtc-error');
                     } else {
                         rtcElement.classList.remove('rtc-error');
@@ -654,7 +659,6 @@ const char* DASHBOARD_HTML = R"rawliteral(
                     document.getElementById('freeHeap').textContent = (data.free_heap / 1024).toFixed(1) + ' KB';
                     document.getElementById('uptime').textContent = formatUptime(data.uptime);
                     
-                    // Update button states based on pump status
                     const isRunning = data.pump_running;
                     document.getElementById('normalBtn').disabled = isRunning;
                     document.getElementById('extendedBtn').disabled = isRunning;
@@ -663,13 +667,10 @@ const char* DASHBOARD_HTML = R"rawliteral(
                 .catch(error => {
                     console.error('Status update failed:', error);
                 });
-
-                // if (Date.now() % 30000 < 2000) {  
-                //     loadStatistics(); 
-                // }
-                    loadVolumePerSecond();        
+                
+            loadVolumePerSecond();
         }
-        
+                
         function formatUptime(milliseconds) {
             const seconds = Math.floor(milliseconds / 1000);
             const hours = Math.floor(seconds / 3600);
@@ -690,6 +691,7 @@ const char* DASHBOARD_HTML = R"rawliteral(
 
         // Statistics management
         function loadStatistics() {
+
             fetch('/api/get-statistics')
                 .then(response => response.json())
                 .then(data => {
