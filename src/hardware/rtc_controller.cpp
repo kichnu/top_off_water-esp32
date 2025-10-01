@@ -662,7 +662,8 @@ bool useInternalRTC = false;
 bool rtcNeedsSync = false;
 bool batteryIssueDetected = false;  // 🆕 Osobna flaga dla problemu baterii!
 
-long currentTimezoneOffset = 3600;  // Dynamiczny offset (domyślnie CET)
+// long currentTimezoneOffset = 3600;  // Dynamiczny offset (domyślnie CET)
+const long GMT_OFFSET_SEC = 0;  // UTC
 
 struct {
     int year = 2024;
@@ -679,79 +680,79 @@ const unsigned long NTP_SYNC_INTERVAL = 3600000;
 
 // ===== DST CALCULATION =====
 
-int getDayOfWeek(int year, int month, int day) {
-    if (month < 3) {
-        month += 12;
-        year--;
-    }
-    int q = day;
-    int m = month;
-    int k = year % 100;
-    int j = year / 100;
-    int h = (q + (13 * (m + 1)) / 5 + k + k / 4 + j / 4 - 2 * j) % 7;
-    return (h + 6) % 7;
-}
+// int getDayOfWeek(int year, int month, int day) {
+//     if (month < 3) {
+//         month += 12;
+//         year--;
+//     }
+//     int q = day;
+//     int m = month;
+//     int k = year % 100;
+//     int j = year / 100;
+//     int h = (q + (13 * (m + 1)) / 5 + k + k / 4 + j / 4 - 2 * j) % 7;
+//     return (h + 6) % 7;
+// }
 
-int getLastSunday(int year, int month) {
-    int daysInMonth;
-    if (month == 2) {
-        daysInMonth = (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) ? 29 : 28;
-    } else if (month == 4 || month == 6 || month == 9 || month == 11) {
-        daysInMonth = 30;
-    } else {
-        daysInMonth = 31;
-    }
+// int getLastSunday(int year, int month) {
+//     int daysInMonth;
+//     if (month == 2) {
+//         daysInMonth = (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) ? 29 : 28;
+//     } else if (month == 4 || month == 6 || month == 9 || month == 11) {
+//         daysInMonth = 30;
+//     } else {
+//         daysInMonth = 31;
+//     }
     
-    for (int day = daysInMonth; day >= 1; day--) {
-        if (getDayOfWeek(year, month, day) == 0) {
-            return day;
-        }
-    }
-    return daysInMonth;
-}
+//     for (int day = daysInMonth; day >= 1; day--) {
+//         if (getDayOfWeek(year, month, day) == 0) {
+//             return day;
+//         }
+//     }
+//     return daysInMonth;
+// }
 
-bool isDSTActive(int year, int month, int day, int hour) {
-    int marchLastSunday = getLastSunday(year, 3);
-    int octoberLastSunday = getLastSunday(year, 10);
+// bool isDSTActive(int year, int month, int day, int hour) {
+//     int marchLastSunday = getLastSunday(year, 3);
+//     int octoberLastSunday = getLastSunday(year, 10);
     
-    if (month < 3 || month > 10) return false;
-    if (month > 3 && month < 10) return true;
+//     if (month < 3 || month > 10) return false;
+//     if (month > 3 && month < 10) return true;
     
-    if (month == 3) {
-        if (day < marchLastSunday) return false;
-        if (day > marchLastSunday) return true;
-        return (hour >= 2);
-    }
+//     if (month == 3) {
+//         if (day < marchLastSunday) return false;
+//         if (day > marchLastSunday) return true;
+//         return (hour >= 2);
+//     }
     
-    if (month == 10) {
-        if (day < octoberLastSunday) return true;
-        if (day > octoberLastSunday) return false;
-        return (hour < 3);
-    }
+//     if (month == 10) {
+//         if (day < octoberLastSunday) return true;
+//         if (day > octoberLastSunday) return false;
+//         return (hour < 3);
+//     }
     
-    return false;
-}
+//     return false;
+// }
 
-long getPolandTimezoneOffset(int year, int month, int day, int hour) {
-    if (isDSTActive(year, month, day, hour)) {
-        return 7200;
-    } else {
-        return 3600;
-    }
-}
+// long getPolandTimezoneOffset(int year, int month, int day, int hour) {
+//     if (isDSTActive(year, month, day, hour)) {
+//         return 7200;
+//     } else {
+//         return 3600;
+//     }
+// }
 
-long getCurrentPolandOffset() {
-    time_t now;
-    time(&now);
-    struct tm* utc_time = gmtime(&now);
+// long getCurrentPolandOffset() {
+//     time_t now;
+//     time(&now);
+//     struct tm* utc_time = gmtime(&now);
     
-    return getPolandTimezoneOffset(
-        utc_time->tm_year + 1900,
-        utc_time->tm_mon + 1,
-        utc_time->tm_mday,
-        utc_time->tm_hour
-    );
-}
+//     return getPolandTimezoneOffset(
+//         utc_time->tm_year + 1900,
+//         utc_time->tm_mon + 1,
+//         utc_time->tm_mday,
+//         utc_time->tm_hour
+//     );
+// }
 
 // ===== HELPER FUNCTIONS =====
 
@@ -816,14 +817,16 @@ bool syncTimeFromNTP() {
     }
     
     // 🔧 Update timezone offset BEFORE NTP sync
-    currentTimezoneOffset = getCurrentPolandOffset();
-    LOG_INFO("Timezone offset: UTC%+d (%s)", 
-             currentTimezoneOffset / 3600,
-             (currentTimezoneOffset == 7200) ? "CEST" : "CET");
+    // currentTimezoneOffset = getCurrentPolandOffset();
+    // LOG_INFO("Timezone offset: UTC%+d (%s)", 
+    //          currentTimezoneOffset / 3600,
+    //          (currentTimezoneOffset == 7200) ? "CEST" : "CET");
     
     LOG_INFO("Attempting NTP synchronization from %s...", NTP_SERVER);
     
-    configTime(currentTimezoneOffset, 0, NTP_SERVER);
+    // configTime(currentTimezoneOffset, 0, NTP_SERVER);
+
+    configTime(0, 0, NTP_SERVER);  // UTC
     
     int attempts = 0;
     time_t now = 0;
@@ -858,10 +861,10 @@ bool setRTCFromNTP() {
     time(&ntp_time);
     
     // 🔧 CRITICAL: Add offset to store LOCAL time in RTC
-    LOG_INFO("NTP returned UTC timestamp: %lu", (unsigned long)ntp_time);
-    ntp_time += currentTimezoneOffset;
-    LOG_INFO("Adding offset %ld seconds -> Local timestamp: %lu", 
-             currentTimezoneOffset, (unsigned long)ntp_time);
+    // LOG_INFO("NTP returned UTC timestamp: %lu", (unsigned long)ntp_time);
+    // ntp_time += currentTimezoneOffset;
+    // LOG_INFO("Adding offset %ld seconds -> Local timestamp: %lu", 
+    //          currentTimezoneOffset, (unsigned long)ntp_time);
     
     rtc.adjust(DateTime(ntp_time));
     
@@ -902,7 +905,7 @@ void initializeRTC() {
     // 🔧 Reset flags at start
     rtcNeedsSync = false;
     batteryIssueDetected = false;
-    currentTimezoneOffset = 3600;  // Default CET
+    // currentTimezoneOffset = 3600;  // Default CET
     
     LOG_INFO("Attempting to initialize external DS3231 RTC...");
     
@@ -1153,13 +1156,16 @@ unsigned long getUnixTimestamp() {
         DateTime now = rtc.now();
         
         // Calculate offset for this specific date/time
-        long offset = getPolandTimezoneOffset(
-            now.year(), now.month(), now.day(), now.hour()
-        );
+        // long offset = getPolandTimezoneOffset(
+        //     now.year(), now.month(), now.day(), now.hour()
+        // );
         
+
+     
+        return now.unixtime();  // RTC ma UTC, zwróć bezpośrednio
         // RTC has local time, convert to UTC
-        unsigned long localTimestamp = now.unixtime();
-        return localTimestamp - offset;
+        // unsigned long localTimestamp = now.unixtime();
+        // return localTimestamp - offset;
     }
 }
 

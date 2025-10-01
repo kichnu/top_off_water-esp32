@@ -281,7 +281,7 @@ const char* DASHBOARD_HTML = R"rawliteral(
                     <span class="status-value" id="wifiStatus">Loading...</span>
                 </div>
                 <div class="status-item">
-                    <span class="status-label">RTC Time:</span>
+                    <span class="status-label">RTC Time(UTC):</span>
                     <span class="status-value" id="rtcTime">Loading...</span>
                 </div>
                 <div class="status-item">
@@ -634,31 +634,31 @@ const char* DASHBOARD_HTML = R"rawliteral(
                     document.getElementById('pumpStatus').textContent = data.pump_running ? 
                         `Active (${data.pump_remaining}s remaining)` : 'Inactive';
                     document.getElementById('wifiStatus').textContent = data.wifi_status;
-                    
+
                     // RTC display with battery warning
                     const rtcText = data.rtc_time || 'Error';
                     const rtcInfo = data.rtc_info || '';
                     const rtcElement = document.getElementById('rtcTime');
-                    
+
                     let rtcHTML = rtcText;
-                    
+
                     if (data.rtc_needs_sync === true) {
                         rtcHTML += '<br><small style="color: #e74c3c; font-size: 0.8em; font-weight: bold;">⚠️ Battery may be dead - replace CR2032</small>';
                     } else {
                         rtcHTML += `<br><small style="color: #666; font-size: 0.8em;">${rtcInfo}</small>`;
                     }
-                    
+
                     rtcElement.innerHTML = rtcHTML;
-                    
+
                     if (data.rtc_hardware === false || data.rtc_needs_sync === true) {
                         rtcElement.classList.add('rtc-error');
                     } else {
                         rtcElement.classList.remove('rtc-error');
                     }
-                    
+
                     document.getElementById('freeHeap').textContent = (data.free_heap / 1024).toFixed(1) + ' KB';
                     document.getElementById('uptime').textContent = formatUptime(data.uptime);
-                    
+
                     const isRunning = data.pump_running;
                     document.getElementById('normalBtn').disabled = isRunning;
                     document.getElementById('extendedBtn').disabled = isRunning;
@@ -667,10 +667,10 @@ const char* DASHBOARD_HTML = R"rawliteral(
                 .catch(error => {
                     console.error('Status update failed:', error);
                 });
-                
+
             loadVolumePerSecond();
         }
-                
+
         function formatUptime(milliseconds) {
             const seconds = Math.floor(milliseconds / 1000);
             const hours = Math.floor(seconds / 3600);
