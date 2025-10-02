@@ -19,5 +19,6 @@ void initInternalTimeFromCompileTime();    // Helper function
 bool setRTCFromNTP();                      // Attempt NTP sync and set RTC
 
 bool rtcNeedsSynchronization();
+bool isBatteryIssueDetected();
 
 #endif

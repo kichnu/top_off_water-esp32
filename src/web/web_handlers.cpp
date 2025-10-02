@@ -130,6 +130,7 @@ void handleStatus(AsyncWebServerRequest* request) {
     json["rtc_hardware"] = isRTCHardware(); 
 
     json["rtc_needs_sync"] = rtcNeedsSynchronization();
+    json["rtc_battery_issue"] = isBatteryIssueDetected();
 
     // json["rtc_info"] = getRTCInfo();
     json["free_heap"] = ESP.getFreeHeap();

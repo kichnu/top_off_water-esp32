@@ -642,15 +642,17 @@ const char* DASHBOARD_HTML = R"rawliteral(
 
                     let rtcHTML = rtcText;
 
-                    if (data.rtc_needs_sync === true) {
+                    if (data.rtc_battery_issue === true || data.rtc_needs_sync === true) {
                         rtcHTML += '<br><small style="color: #e74c3c; font-size: 0.8em; font-weight: bold;">⚠️ Battery may be dead - replace CR2032</small>';
                     } else {
                         rtcHTML += `<br><small style="color: #666; font-size: 0.8em;">${rtcInfo}</small>`;
                     }
 
+
+
                     rtcElement.innerHTML = rtcHTML;
 
-                    if (data.rtc_hardware === false || data.rtc_needs_sync === true) {
+                    if (data.rtc_hardware === false || data.rtc_battery_issue === true || data.rtc_needs_sync === true) {
                         rtcElement.classList.add('rtc-error');
                     } else {
                         rtcElement.classList.remove('rtc-error');
