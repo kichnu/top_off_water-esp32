@@ -289,7 +289,7 @@ FRAM> config
   "wifi_ssid": "YourNetwork", 
   "wifi_password": "YourPassword",
   "admin_password": "newadmin123",
-  "vps_token": "212d4a3d708f907c2c782937f72daf28aa66d8e342d4ede15381b6d8295344d6"
+  "vps_token": "YourVpsToken"
 }
 ```
 

@@ -10,10 +10,13 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include "../algorithm/algorithm_config.h"
+#include "../algorithm/water_algorithm.h"
 
 #if MODE_PRODUCTION
     #include "../config/credentials_manager.h"
 #endif
+
+extern WaterAlgorithm waterAlgorithm;
 
 void initVPSLogger() {
 #if MODE_PRODUCTION
@@ -24,71 +27,6 @@ void initVPSLogger() {
     LOG_INFO("Using hardcoded credentials (programming mode)");
 #endif
 }
-
-// bool logEventToVPS(const String& eventType, uint16_t volumeML, const String& timestamp) {
-//     // Skip logging if pump globally disabled
-//     if (!pumpGlobalEnabled) {
-//         return false;
-//     }
-
-//     if (!isWiFiConnected()) {
-//         LOG_WARNING("WiFi not connected, cannot log to VPS");
-//         return false;
-//     }
-    
-//     HTTPClient http;
-    
-// #if MODE_PRODUCTION
-//     // Production mode: use dynamic VPS URL and credentials
-//     const char* vpsUrl = getVPSURL();
-//     http.begin(vpsUrl);
-    
-//     String authHeader = "Bearer " + String(getVPSAuthToken());
-//     http.addHeader("Authorization", authHeader);
-    
-//     JsonDocument payload;
-//     payload["device_id"] = getDeviceID();
-    
-//     LOG_INFO("Using dynamic VPS URL: %s", vpsUrl);
-// #else
-//     // Programming mode: use hardcoded credentials
-//     http.begin(VPS_URL);
-    
-//     String authHeader = "Bearer " + String(VPS_AUTH_TOKEN);
-//     http.addHeader("Authorization", authHeader);
-    
-//     JsonDocument payload;
-//     payload["device_id"] = DEVICE_ID;
-// #endif
-    
-//     http.addHeader("Content-Type", "application/json");
-//     http.setTimeout(10000);
-    
-//     payload["timestamp"] = timestamp;
-//     payload["unix_time"] = getUnixTimestamp();
-//     payload["event_type"] = eventType;
-//     payload["volume_ml"] = volumeML;
-//     payload["water_status"] = getWaterStatus();
-//     payload["system_status"] = "OK";
-    
-//     String jsonString;
-//     serializeJson(payload, jsonString);
-    
-//     LOG_INFO("Sending to VPS: %s", jsonString.c_str());
-    
-//     int httpCode = http.POST(jsonString);
-    
-//     if (httpCode == 200) {
-//         LOG_INFO("VPS log successful: %s", eventType.c_str());
-//         http.end();
-//         return true;
-//     } else {
-//         LOG_ERROR("VPS log failed: HTTP %d", httpCode);
-//         http.end();
-//         return false;
-//     }
-// }
-
 
 bool logEventToVPS(const String& eventType, uint16_t volumeML, const String& timestamp) {
     // Skip logging if pump globally disabled
@@ -152,6 +90,13 @@ bool logEventToVPS(const String& eventType, uint16_t volumeML, const String& tim
     payload["volume_ml"] = volumeML;
     payload["water_status"] = getWaterStatus();
     payload["system_status"] = "OK";
+
+    // 🆕 NEW: Add daily_volume_ml for MANUAL_NORMAL events
+    if (eventType == "MANUAL_NORMAL") {
+        payload["daily_volume_ml"] = waterAlgorithm.getDailyVolume();
+        LOG_INFO("Including daily_volume_ml in VPS payload: %dml", 
+                 waterAlgorithm.getDailyVolume());
+    }
     
     String jsonString;
     serializeJson(payload, jsonString);
@@ -249,6 +194,8 @@ bool logCycleToVPS(const PumpCycle& cycle, const String& timestamp) {
     payload["gap2_fail_sum"] = currentStats.gap2_fail_sum;
     payload["water_fail_sum"] = currentStats.water_fail_sum;
     payload["last_reset_timestamp"] = currentStats.last_reset_timestamp;
+
+    payload["daily_volume_ml"] = waterAlgorithm.getDailyVolume();
     
     // 🆕 NEW: Add VPS URL info for debugging
 #if MODE_PRODUCTION

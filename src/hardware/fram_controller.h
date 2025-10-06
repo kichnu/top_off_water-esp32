@@ -39,9 +39,14 @@ struct PumpCycle;
 #define FRAM_ADDR_LAST_RESET   (FRAM_ESP32_BASE + 0x12)  // 4 bytes - timestamp ostatniego resetu
 #define FRAM_ADDR_STATS_CHKSUM (FRAM_ESP32_BASE + 0x16)  // 2 bytes - checksum statystyk
 
+// 🆕 NEW: Daily volume tracking
+#define FRAM_ADDR_DAILY_VOLUME    (FRAM_ESP32_BASE + 0x18)  // 2 bytes - uint16_t
+#define FRAM_ADDR_LAST_RESET_DATE (FRAM_ESP32_BASE + 0x1A)  // 12 bytes - "YYYY-MM-DD\0"
+#define FRAM_ADDR_DAILY_CHECKSUM  (FRAM_ESP32_BASE + 0x26)  // 2 bytes - checksum
+
 // ESP32 cycle management  
-#define FRAM_ADDR_CYCLE_COUNT  (FRAM_ESP32_BASE + 0x20)  // 2 bytes - liczba zapisanych cykli
-#define FRAM_ADDR_CYCLE_INDEX  (FRAM_ESP32_BASE + 0x22)  // 2 bytes - current write index (circular buffer)
+#define FRAM_ADDR_CYCLE_COUNT  (FRAM_ESP32_BASE + 0x28)  // 2 bytes - liczba zapisanych cykli
+#define FRAM_ADDR_CYCLE_INDEX  (FRAM_ESP32_BASE + 0x2A)  // 2 bytes - current write index (circular buffer)
 #define FRAM_ADDR_CYCLE_DATA   (FRAM_ESP32_BASE + 0x100) // Start danych cykli
 
 #define FRAM_MAX_CYCLES        200     // Maksymalnie 200 cykli (~20 dni)
@@ -57,6 +62,14 @@ bool loadVolumeFromFRAM(float& volume);
 bool saveVolumeToFRAM(float volume);
 bool verifyFRAM();
 void testFRAM();
+
+struct DailyVolumeData {
+    uint16_t volume_ml;
+    char last_reset_date[12];  // "YYYY-MM-DD\0"
+};
+
+bool saveDailyVolumeToFRAM(uint16_t dailyVolume, const char* resetDate);
+bool loadDailyVolumeFromFRAM(uint16_t& dailyVolume, char* resetDate);
 
 // Cycle management functions (implemented in fram_controller.cpp)
 bool saveCycleToFRAM(const PumpCycle& cycle);

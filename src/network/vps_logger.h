@@ -5,6 +5,8 @@
 
 struct PumpCycle;
 
+class WaterAlgorithm;
+
 void initVPSLogger();
 bool logEventToVPS(const String& eventType, uint16_t volumeML, const String& timestamp);
 bool logCycleToVPS(const PumpCycle& cycle, const String& timestamp);

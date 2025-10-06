@@ -12,26 +12,61 @@
 
 WaterAlgorithm waterAlgorithm;
 
+// water_algorithm.cpp - WaterAlgorithm::WaterAlgorithm()
+
 WaterAlgorithm::WaterAlgorithm() {
     currentState = STATE_IDLE;
     resetCycle();
     dayStartTime = millis();
     dailyVolumeML = 0;
+    resetPending = false;
+    memset(lastResetDate, 0, sizeof(lastResetDate));
+    
     lastError = ERROR_NONE;
     errorSignalActive = false;
     lastSensor1State = false;
     lastSensor2State = false;
-    todayCycles.clear(); //nowa metoda
+    todayCycles.clear();
 
     framDataLoaded = false;
-    
     lastFRAMCleanup = millis();
     framCycles.clear();
+
+    // 🆕 NEW: Load daily volume from FRAM at startup
+    char loadedDate[12];
+    uint16_t loadedVolume = 0;
+    
+    if (loadDailyVolumeFromFRAM(loadedVolume, loadedDate)) {
+        // Get current date from RTC
+        String currentDateStr = getCurrentTimestamp().substring(0, 10); // "YYYY-MM-DD"
+        
+        if (currentDateStr == String(loadedDate)) {
+            // Same day - use loaded volume
+            dailyVolumeML = loadedVolume;
+            strncpy(lastResetDate, loadedDate, 11);
+            lastResetDate[11] = '\0';  // 🔄 ADDED: Ensure null termination
+            LOG_INFO("✅ Restored daily volume from FRAM: %dml (same day)", dailyVolumeML);
+        } else {
+            // Different day - reset to 0
+            dailyVolumeML = 0;
+            strncpy(lastResetDate, currentDateStr.c_str(), 11);
+            lastResetDate[11] = '\0';  // 🔄 ADDED: Ensure null termination
+            saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
+            LOG_INFO("🔄 New day detected, reset daily volume to 0ml");
+        }
+    } else {
+        // No valid data in FRAM - initialize
+        dailyVolumeML = 0;
+        String currentDateStr = getCurrentTimestamp().substring(0, 10);
+        strncpy(lastResetDate, currentDateStr.c_str(), 11);
+        lastResetDate[11] = '\0';  // 🔄 ADDED: Ensure null termination
+        saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
+        LOG_INFO("🆕 Initialized daily volume in FRAM: 0ml");
+    }
 
     loadCyclesFromStorage();
 
     ErrorStats stats;
-
     if (loadErrorStatsFromFRAM(stats)) {
         LOG_INFO("✅ Error statistics loaded from FRAM at startup");
     } else {
@@ -71,36 +106,65 @@ void WaterAlgorithm::update() {
         return;
     }
     
-    // Daily volume reset (every 24h)
-    if (millis() - dayStartTime > 86400000UL) { // 24 hours in ms
-        dayStartTime = millis();
-        dailyVolumeML = 0;
-        todayCycles.clear();
-        LOG_INFO("Daily volume counter reset");
+    String currentDateStr = getCurrentTimestamp().substring(0, 10); // "YYYY-MM-DD"
+    // String currentDateStr = "2025-10-06";
+
+    // Check if date changed
+    if (currentDateStr != String(lastResetDate)) {
+        // Date changed - schedule reset
+        if (isPumpActive()) {
+            // Pump is running - delay reset until pump finishes
+            if (!resetPending) {
+                LOG_INFO("⏳ Date changed to %s, reset delayed (pump active)", 
+                         currentDateStr.c_str());
+                resetPending = true;
+            }
+        } else {
+            // No pump active - reset immediately
+            LOG_INFO("🔄 Date changed: %s → %s, resetting daily volume", 
+                     lastResetDate, currentDateStr.c_str());
+            
+            dailyVolumeML = 0;
+            todayCycles.clear();
+            strncpy(lastResetDate, currentDateStr.c_str(), 11);
+            lastResetDate[11] = '\0';
+            saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
+            resetPending = false;
+            
+            LOG_INFO("✅ Daily volume reset: 0ml (new day: %s)", lastResetDate);
+        }
     }
     
-    uint32_t currentTime = getCurrentTimeSeconds(); // <-- ZMIANA: używaj sekund
+    // 🆕 NEW: Execute delayed reset when pump finishes
+    if (resetPending && !isPumpActive() && currentState == STATE_IDLE) {
+        LOG_INFO("🔄 Executing delayed reset (pump finished)");
+        
+        dailyVolumeML = 0;
+        todayCycles.clear();
+        strncpy(lastResetDate, currentDateStr.c_str(), 11);
+        lastResetDate[11] = '\0';
+        saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
+        resetPending = false;
+        
+        LOG_INFO("✅ Daily volume reset: 0ml (new day: %s)", lastResetDate);
+    }
+    
+    uint32_t currentTime = getCurrentTimeSeconds();
     uint32_t stateElapsed = currentTime - stateStartTime;
 
     switch (currentState) {
-
         case STATE_IDLE:
-
             break;
 
         case STATE_TRYB_1_WAIT:
-
-            if (stateElapsed >= TIME_GAP_1_MAX) { // <-- USUŃ * 1000
-                // Timeout - proceed with max value
+            if (stateElapsed >= TIME_GAP_1_MAX) {
                 currentCycle.time_gap_1 = TIME_GAP_1_MAX;
                 LOG_INFO("TRYB_1: TIME_GAP_1 timeout, using max: %ds", TIME_GAP_1_MAX);
                 
-                // Evaluate result
                 if (sensor_time_match_function(currentCycle.time_gap_1, THRESHOLD_1)) {
                     currentCycle.sensor_results |= PumpCycle::RESULT_GAP1_FAIL;
                 }
                 
-                // Move to delay before pump
                 currentState = STATE_TRYB_1_DELAY;
                 stateStartTime = currentTime;
                 LOG_INFO("TRYB_1: Starting TIME_TO_PUMP delay (%ds)", TIME_TO_PUMP);
@@ -108,18 +172,13 @@ void WaterAlgorithm::update() {
             break;
                     
         case STATE_TRYB_1_DELAY:
-
-            // Wait TIME_TO_PUMP from original trigger
-            if (currentTime - triggerStartTime >= TIME_TO_PUMP) { // <-- USUŃ * 1000
-                // Calculate pump work time from volume setting
+            if (currentTime - triggerStartTime >= TIME_TO_PUMP) {
                 uint16_t pumpWorkTime = calculatePumpWorkTime(currentPumpSettings.volumePerSecond);
                 
-                // Validate pump work time
                 if (!validatePumpWorkTime(pumpWorkTime)) {
                     LOG_ERROR("PUMP_WORK_TIME (%ds) exceeds WATER_TRIGGER_MAX_TIME (%ds)", 
                             pumpWorkTime, WATER_TRIGGER_MAX_TIME);
-                    // Fallback to maximum allowed time
-                    pumpWorkTime = WATER_TRIGGER_MAX_TIME - 10; // Leave 10s margin
+                    pumpWorkTime = WATER_TRIGGER_MAX_TIME - 10;
                 }
                 
                 LOG_INFO("TRYB_2: Starting pump attempt %d/%d for %ds", 
@@ -128,20 +187,16 @@ void WaterAlgorithm::update() {
                 pumpStartTime = currentTime;
                 pumpAttempts++;
                 
-                // Start pump (duration in seconds, but triggerPump expects milliseconds)
                 triggerPump(pumpWorkTime, "AUTO_PUMP");
                 
-                currentCycle.pump_duration = pumpWorkTime; // <-- USUŃ / 1000
+                currentCycle.pump_duration = pumpWorkTime;
                 currentState = STATE_TRYB_2_PUMP;
                 stateStartTime = currentTime;
             }
             break;
                
         case STATE_TRYB_2_PUMP:
-
-            // Pump is running, wait for completion
             if (!isPumpActive()) {
-                // Pump finished, check sensor response
                 LOG_INFO("TRYB_2: Pump finished, checking sensors");
                 currentState = STATE_TRYB_2_VERIFY;
                 stateStartTime = currentTime;
@@ -149,26 +204,21 @@ void WaterAlgorithm::update() {
             break;
 
         case STATE_TRYB_2_VERIFY: {
-
             static uint32_t lastStatusLog = 0;
-            if (currentTime - lastStatusLog >= 5) { // Co 5 sekund
-
+            if (currentTime - lastStatusLog >= 5) {
                 uint32_t timeSincePumpStart = currentTime - pumpStartTime;
                 LOG_INFO("TRYB_2_VERIFY: Waiting for sensors... %ds/%ds (attempt %d/%d)", 
                         timeSincePumpStart, WATER_TRIGGER_MAX_TIME, pumpAttempts, PUMP_MAX_ATTEMPTS);
                 lastStatusLog = currentTime;
             }
 
-            // Check if sensors deactivated (water level rose)
             bool sensorsOK = !readWaterSensor1() && !readWaterSensor2();
             
             if (sensorsOK) {
-                // Success! Calculate water trigger time
                 calculateWaterTrigger();
                 LOG_INFO("TRYB_2: Sensors deactivated, water_trigger_time: %ds", 
                         currentCycle.water_trigger_time);
                 
-                // Check if we need to measure TIME_GAP_2 - TYLKO gdy TRYB_1_result == 0
                 uint8_t tryb1Result = sensor_time_match_function(currentCycle.time_gap_1, THRESHOLD_1);
                 if (tryb1Result == 0) {
                     currentState = STATE_TRYB_2_WAIT_GAP2;
@@ -181,16 +231,13 @@ void WaterAlgorithm::update() {
                     stateStartTime = currentTime;
                 }
             } else {
-                // POPRAWKA: liczy czas od PUMP_START, nie od state start
                 uint32_t timeSincePumpStart = currentTime - pumpStartTime;
                 
                 if (timeSincePumpStart >= WATER_TRIGGER_MAX_TIME) {
-                    // Timeout - sensors didn't respond
                     currentCycle.water_trigger_time = WATER_TRIGGER_MAX_TIME;
 
-                        // 🆕 MARK FAIL on first timeout detection
                     if (WATER_TRIGGER_MAX_TIME >= THRESHOLD_WATER) {
-                        waterFailDetected = true;  // Set flag, never reset
+                        waterFailDetected = true;
                         LOG_INFO("WATER fail detected in attempt %d/%d", pumpAttempts, PUMP_MAX_ATTEMPTS);
                     }
                     
@@ -199,19 +246,15 @@ void WaterAlgorithm::update() {
                             pumpAttempts, PUMP_MAX_ATTEMPTS);
                     
                     if (pumpAttempts < PUMP_MAX_ATTEMPTS) {
-                        // Try again - go back to pump
                         LOG_WARNING("TRYB_2: Retrying pump attempt %d/%d", 
                                 pumpAttempts + 1, PUMP_MAX_ATTEMPTS);
                         
-                        // Go directly to pump again (skip TIME_TO_PUMP delay)
                         currentState = STATE_TRYB_1_DELAY;
-                        stateStartTime = currentTime - TIME_TO_PUMP; // Immediate retry
+                        stateStartTime = currentTime - TIME_TO_PUMP;
                     } else {
-                            // All attempts failed - ERROR
                         LOG_ERROR("TRYB_2: All %d pump attempts failed!", PUMP_MAX_ATTEMPTS);
                         currentCycle.error_code = ERROR_PUMP_FAILURE;
                                         
-                        // 🆕 DODAJ: Log failed cycle before ERROR state
                         LOG_INFO("Logging failed cycle before entering ERROR state");
                         logCycleComplete();
                                         
@@ -224,7 +267,6 @@ void WaterAlgorithm::update() {
         }
 
         case STATE_TRYB_2_WAIT_GAP2: 
-            // DEBUGGING - sprawdź czy mamy release times
             static bool debugOnce = true;
             if (debugOnce) {
                 LOG_INFO("DEBUG GAP2: s1Release=%ds, s2Release=%ds, waiting=%d", 
@@ -232,9 +274,7 @@ void WaterAlgorithm::update() {
                 debugOnce = false;
             }
             
-            // Check if both sensors released
             if (sensor1ReleaseTime && sensor2ReleaseTime && waitingForSecondSensor) {
-                // Calculate TIME_GAP_2
                 calculateTimeGap2();
                 waitingForSecondSensor = false;
                 LOG_INFO("TRYB_2: TIME_GAP_2 calculated successfully");
@@ -255,22 +295,18 @@ void WaterAlgorithm::update() {
                 currentState = STATE_LOGGING;
                 stateStartTime = currentTime;
             }
-    break;
+            break;
             
         case STATE_LOGGING:
-
             if(permission_log){
                 LOG_INFO("==================case STATE_LOGGING");
                 permission_log = false;      
             } 
-
         
-            // Log cycle and check daily limit
-            if (!cycleLogged) { // Wykonaj tylko raz na początku stanu
+            if (!cycleLogged) {
                 logCycleComplete();
                 cycleLogged = true;
                 
-                // Check daily limit
                 if (dailyVolumeML > FILL_WATER_MAX) {
                     LOG_ERROR("Daily limit exceeded! %dml > %dml", dailyVolumeML, FILL_WATER_MAX);
                     currentCycle.error_code = ERROR_DAILY_LIMIT;
@@ -280,7 +316,6 @@ void WaterAlgorithm::update() {
                 }
             }
             
-            // Return to idle after logging time
             if (stateElapsed >= LOGGING_TIME) { 
                 LOG_INFO("Cycle complete, returning to IDLE######################################################");
                 currentState = STATE_IDLE;
@@ -463,6 +498,10 @@ void WaterAlgorithm::logCycleComplete() {
     
     // Add to daily volume (use actual volume, not fixed SINGLE_DOSE_VOLUME)
     dailyVolumeML += actualVolumeML;
+
+    if (!saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate)) {
+        LOG_WARNING("⚠️ Failed to save daily volume to FRAM");
+    }
     
     // Store in today's cycles (RAM)
     todayCycles.push_back(currentCycle);
@@ -508,6 +547,13 @@ void WaterAlgorithm::logCycleComplete() {
 }
 
 bool WaterAlgorithm::requestManualPump(uint16_t duration_ms) {
+
+    if (dailyVolumeML >= FILL_WATER_MAX) {
+        LOG_ERROR("❌ Manual pump blocked: Daily limit reached (%dml / %dml)", 
+                  dailyVolumeML, FILL_WATER_MAX);
+        return false;  // Block manual pump when limit reached
+    }
+
     if (currentState == STATE_ERROR) {
         LOG_WARNING("Cannot start manual pump in error state");
         return false;
@@ -633,23 +679,37 @@ void WaterAlgorithm::loadCyclesFromStorage() {
     if (loadCyclesFromFRAM(framCycles, 200)) { // Load max 200 cycles
         framDataLoaded = true;
         LOG_INFO("Loaded %d cycles from FRAM", framCycles.size());
-        
-        // Calculate daily volume from today's cycles
-        uint32_t todayStart = (millis() / 1000) - (millis() / 1000) % 86400; // Start of today
-        dailyVolumeML = 0;
+
+
+        LOG_INFO("Daily volume already loaded from FRAM: %dml", dailyVolumeML);
+
+                // Just load today's cycles for display
+        uint32_t todayStart = (millis() / 1000) - (millis() / 1000) % 86400;
         
         for (const auto& cycle : framCycles) {
             if (cycle.timestamp >= todayStart) {
-                // Today's cycle
-                uint16_t cycleVolume = cycle.volume_dose * 10; // Convert back from 10ml units
-                dailyVolumeML += cycleVolume;
-                
-                // Also add to RAM cycles for immediate access
                 todayCycles.push_back(cycle);
             }
         }
         
-        LOG_INFO("Calculated daily volume from FRAM: %dml", dailyVolumeML);
+        LOG_INFO("Loaded %d cycles from today", todayCycles.size());
+        
+        // // Calculate daily volume from today's cycles
+        // uint32_t todayStart = (millis() / 1000) - (millis() / 1000) % 86400; // Start of today
+        // dailyVolumeML = 0;
+        
+        // for (const auto& cycle : framCycles) {
+        //     if (cycle.timestamp >= todayStart) {
+        //         // Today's cycle
+        //         uint16_t cycleVolume = cycle.volume_dose * 10; // Convert back from 10ml units
+        //         dailyVolumeML += cycleVolume;
+                
+        //         // Also add to RAM cycles for immediate access
+        //         todayCycles.push_back(cycle);
+        //     }
+        // }
+        
+        // LOG_INFO("Calculated daily volume from FRAM: %dml", dailyVolumeML);
     } else {
         LOG_WARNING("Failed to load cycles from FRAM, starting fresh");
         framDataLoaded = false;
@@ -726,6 +786,32 @@ bool WaterAlgorithm::getErrorStatistics(uint16_t& gap1_sum, uint16_t& gap2_sum, 
     }
     
     return success;
+}
+
+void WaterAlgorithm::addManualVolume(uint16_t volumeML) {
+    // 🆕 NEW: Add manual pump volume to daily total
+    dailyVolumeML += volumeML;
+    
+    // Save to FRAM
+    if (!saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate)) {
+        LOG_WARNING("⚠️ Failed to save daily volume to FRAM after manual pump");
+    }
+    
+    LOG_INFO("✅ Manual volume added: +%dml → Total: %dml / %dml", 
+             volumeML, dailyVolumeML, FILL_WATER_MAX);
+    
+    // 🆕 NEW: Check if limit exceeded after manual pump
+    if (dailyVolumeML >= FILL_WATER_MAX) {
+        LOG_ERROR("❌ Daily limit reached after manual pump: %dml / %dml", 
+                  dailyVolumeML, FILL_WATER_MAX);
+        
+        // Trigger error state
+        currentCycle.error_code = ERROR_DAILY_LIMIT;
+        startErrorSignal(ERROR_DAILY_LIMIT);
+        currentState = STATE_ERROR;
+        
+        LOG_ERROR("System entering ERROR state - press reset button to clear");
+    }
 }
 
 

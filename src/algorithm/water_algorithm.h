@@ -38,9 +38,9 @@ private:
     bool cycleLogged;
     
     // Daily volume tracking
-    std::vector<PumpCycle> todayCycles;
-    uint32_t dayStartTime;
-    uint16_t dailyVolumeML;
+    // std::vector<PumpCycle> todayCycles;
+    // uint32_t dayStartTime;
+    // uint16_t dailyVolumeML;
     
     // Error handling
     ErrorCode lastError;
@@ -48,6 +48,13 @@ private:
     uint32_t errorSignalStart;
     uint8_t errorPulseCount;
     bool errorPulseState;
+
+    // Daily volume tracking
+    std::vector<PumpCycle> todayCycles;
+    uint32_t dayStartTime;
+    uint16_t dailyVolumeML;
+    char lastResetDate[12];  // 🆕 NEW: "YYYY-MM-DD\0" format
+    bool resetPending;       // 🆕 NEW: Flag for delayed reset
     
     // Private methods
     void resetCycle();
@@ -98,6 +105,10 @@ public:
     // Manual pump interface
     bool requestManualPump(uint16_t duration_ms);
     void onManualPumpComplete();
+
+    const char* getLastResetDate() const { return lastResetDate; }
+
+    void addManualVolume(uint16_t volumeML);
 };
 
 extern WaterAlgorithm waterAlgorithm;

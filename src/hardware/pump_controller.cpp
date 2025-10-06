@@ -10,6 +10,7 @@
 
 
 
+
 bool pumpRunning = false;
 unsigned long pumpStartTime = 0;
 unsigned long pumpDuration = 0;
@@ -24,8 +25,6 @@ void initPumpController() {
 
     pinMode(PUMP_RELAY_PIN, OUTPUT);
     digitalWrite(PUMP_RELAY_PIN, HIGH);
-
-    // LOG_INFO("GPIO Pin 2 configured as OUTPUT, initial state: LOW");   //added
     
     pumpRunning = false;
     LOG_INFO("Pump controller initialized");
@@ -52,6 +51,14 @@ void updatePumpController() {
         
         LOG_INFO("Pump stopped after %d seconds, estimated volume: %d ml", 
                  actualDuration, volumeML);
+
+        if (currentActionType == "MANUAL_NORMAL") {
+            // Access water algorithm to update daily volume
+            waterAlgorithm.addManualVolume(volumeML);
+            LOG_INFO("✅ MANUAL_NORMAL volume added to daily total: %dml", volumeML);
+        } else if (currentActionType == "MANUAL_EXTENDED") {
+            LOG_INFO("ℹ️ MANUAL_EXTENDED (calibration) - NOT added to daily volume");
+        }
 
         // Log to VPS (skip AUTO_PUMP - handled by algorithm)
         if (!currentActionType.startsWith("AUTO")) {
@@ -101,8 +108,6 @@ bool triggerPump(uint16_t durationSeconds, const String& actionType) {
     LOG_INFO("Pump started: %s for %d seconds", actionType.c_str(), durationSeconds);
     return true;
 }
-
-
 
 bool isPumpActive() {
     return pumpRunning;

@@ -28,7 +28,7 @@ extern const unsigned long PUMP_AUTO_ENABLE_MS;
 
 
 // Stałe mogą być tutaj
-const unsigned long SESSION_TIMEOUT_MS = 300000;
+const unsigned long SESSION_TIMEOUT_MS = 1800000; //30minut sesja
 const unsigned long RATE_LIMIT_WINDOW_MS = 1000;
 const int MAX_REQUESTS_PER_SECOND = 5;
 const int MAX_FAILED_ATTEMPTS = 10;
@@ -36,7 +36,7 @@ const unsigned long BLOCK_DURATION_MS = 60000;
 
 struct PumpSettings {
     uint16_t normalCycleSeconds = 15;
-    uint16_t extendedCycleSeconds = 15;
+    uint16_t extendedCycleSeconds = 30;
     float volumePerSecond = 1.0;
     bool autoModeEnabled = true;
 };

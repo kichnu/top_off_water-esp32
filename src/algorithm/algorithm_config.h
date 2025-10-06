@@ -5,12 +5,22 @@
 
 
 // ============== PARAMETRY CZASOWE [sekundy] ==============
+// #define TIME_TO_PUMP            450    // 450/7.5 min - czas od TRIGGER do startu pompy
+// #define TIME_GAP_1_MAX          300    // 300/5 min - max oczekiwanie na drugi czujnik (TRYB_1)
+// #define TIME_GAP_2_MAX          300    // 300/5 min - max oczekiwanie na drugi czujnik (TRYB_2)
+// #define THRESHOLD_1             200    // 180/3 min - próg dla TIME_GAP_1
+// #define THRESHOLD_2             200     // 60/1 min - próg dla TIME_GAP_2
+// #define WATER_TRIGGER_MAX_TIME  120    // 120/2 min - max czas na reakcję czujników po starcie pompy
+// #define THRESHOLD_WATER         30     // 30s - próg dla WATER_TRIGGER_TIME
+// #define LOGGING_TIME            5      // 5s - czas na logowanie po cyklu
+// #define SENSOR_DEBOUNCE_TIME    1      // 1s - debouncing czujników
+
 #define TIME_TO_PUMP            20    // 450/7.5 min - czas od TRIGGER do startu pompy
-#define TIME_GAP_1_MAX          10    // 300/5 min - max oczekiwanie na drugi czujnik (TRYB_1)
-#define TIME_GAP_2_MAX          10    // 300/5 min - max oczekiwanie na drugi czujnik (TRYB_2)
-#define THRESHOLD_1             5    // 180/3 min - próg dla TIME_GAP_1
-#define THRESHOLD_2             5     // 60/1 min - próg dla TIME_GAP_2
-#define WATER_TRIGGER_MAX_TIME  15    // 120/2 min - max czas na reakcję czujników po starcie pompy
+#define TIME_GAP_1_MAX          15    // 300/5 min - max oczekiwanie na drugi czujnik (TRYB_1)
+#define TIME_GAP_2_MAX          15    // 300/5 min - max oczekiwanie na drugi czujnik (TRYB_2)
+#define THRESHOLD_1             10    // 180/3 min - próg dla TIME_GAP_1
+#define THRESHOLD_2             10     // 60/1 min - próg dla TIME_GAP_2
+#define WATER_TRIGGER_MAX_TIME  20    // 120/2 min - max czas na reakcję czujników po starcie pompy
 #define THRESHOLD_WATER         10     // 30s - próg dla WATER_TRIGGER_TIME
 #define LOGGING_TIME            5      // 5s - czas na logowanie po cyklu
 #define SENSOR_DEBOUNCE_TIME    1      // 1s - debouncing czujników
@@ -19,6 +29,7 @@
 
 // ============== PARAMETRY POMPY ==============
 #define PUMP_MAX_ATTEMPTS       3      // Maksymalna liczba prób pompy w TRYB_2
+
 #define SINGLE_DOSE_VOLUME      100    // ml - objętość jednej dolewki
 #define FILL_WATER_MAX          2400   // ml - max dolewka na dobę
 
@@ -66,7 +77,7 @@ struct PumpCycle {
     uint8_t  pump_attempts;    // Liczba prób pompy
     uint8_t  sensor_results;   // Flagi wyników (bity 0-2)
     uint8_t  error_code;       // Kod błędu
-    uint8_t  volume_dose;      // Objętość w jednostkach 10ml
+    uint16_t  volume_dose;      // Objętość w ml
     
     // Sensor results bit flags
     static const uint8_t RESULT_GAP1_FAIL = 0x01;  // TIME_GAP_1 >= THRESHOLD_1

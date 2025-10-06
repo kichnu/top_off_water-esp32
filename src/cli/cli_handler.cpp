@@ -407,8 +407,8 @@ void cmdConfig() {
     Serial.println("  \"wifi_ssid\": \"MyNetwork\",");
     Serial.println("  \"wifi_password\": \"MyPassword\",");
     Serial.println("  \"admin_password\": \"admin123\",");
-    Serial.println("  \"vps_token\": \"212d4a3d708f907c2c782937f72daf28aa66d8e342d4ede15381b6d8295344d6\",");
-    Serial.println("  \"vps_url\": \"http://146.59.92.15:5000/api/water-events\"");  // 🆕 NEW
+    Serial.println("  \"vps_token\": \"YourVpsToken\",");
+    Serial.println("  \"vps_url\": \"YourVpsUrl\""); 
     Serial.println("}");
     Serial.println();
     Serial.print("JSON: ");

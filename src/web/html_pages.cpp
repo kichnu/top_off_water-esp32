@@ -224,7 +224,7 @@ const char* DASHBOARD_HTML = R"rawliteral(
         .alert.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .pump-controls{ 
-             display: flex; flex-wrap: wrap; justify-content:flex-start; align-items: center;
+             display: flex; flex-wrap: wrap; justify-content:space-around; align-items: center;
         }
         .pump-setting{
             display: flex; flex-direction: row;
