@@ -675,9 +675,61 @@ bool saveDailyVolumeToFRAM(uint16_t dailyVolume, const char* resetDate) {
     return true;
 }
 
+// bool loadDailyVolumeFromFRAM(uint16_t& dailyVolume, char* resetDate) {
+//     if (!framInitialized) {
+//         LOG_ERROR("FRAM not initialized for daily volume load");
+//         return false;
+//     }
+    
+//     // Read data
+//     DailyVolumeData data;
+//     fram.read(FRAM_ADDR_DAILY_VOLUME, (uint8_t*)&data.volume_ml, 2);
+//     fram.read(FRAM_ADDR_LAST_RESET_DATE, (uint8_t*)data.last_reset_date, 12);
+    
+//     // Verify checksum
+//     uint16_t calculatedChecksum = calculateDailyVolumeChecksum(data);
+//     uint16_t storedChecksum = 0;
+//     fram.read(FRAM_ADDR_DAILY_CHECKSUM, (uint8_t*)&storedChecksum, 2);
+    
+//     if (calculatedChecksum != storedChecksum) {
+//         LOG_WARNING("Daily volume checksum mismatch: stored=%d, calculated=%d", 
+//                     storedChecksum, calculatedChecksum);
+//         return false;
+//     }
+    
+//     // Sanity check
+//     if (data.volume_ml > 10000) {
+//         LOG_WARNING("FRAM daily volume out of range: %d", data.volume_ml);
+//         return false;
+//     }
+    
+//     // Validate date format (basic check)
+//     if (strlen(data.last_reset_date) != 10 || 
+//         data.last_reset_date[4] != '-' || 
+//         data.last_reset_date[7] != '-') {
+//         LOG_WARNING("Invalid date format in FRAM: %s", data.last_reset_date);
+//         return false;
+//     }
+    
+//     // Return values
+//     dailyVolume = data.volume_ml;
+//     if (resetDate) {
+//         strcpy(resetDate, data.last_reset_date);
+//     }
+    
+//     LOG_INFO("✅ Daily volume loaded from FRAM: %dml (date: %s)", 
+//              dailyVolume, data.last_reset_date);
+    
+//     return true;
+// }
+
+// fram_controller.cpp - na początku funkcji
+
 bool loadDailyVolumeFromFRAM(uint16_t& dailyVolume, char* resetDate) {
+    Serial.println(">>> loadDailyVolumeFromFRAM() called");  // RAW serial
+    
     if (!framInitialized) {
-        LOG_ERROR("FRAM not initialized for daily volume load");
+        Serial.println("ERROR: FRAM not initialized");
         return false;
     }
     
@@ -686,39 +738,38 @@ bool loadDailyVolumeFromFRAM(uint16_t& dailyVolume, char* resetDate) {
     fram.read(FRAM_ADDR_DAILY_VOLUME, (uint8_t*)&data.volume_ml, 2);
     fram.read(FRAM_ADDR_LAST_RESET_DATE, (uint8_t*)data.last_reset_date, 12);
     
+    Serial.printf("  FRAM raw: volume=%d, date='%s'\n", data.volume_ml, data.last_reset_date);
+    
     // Verify checksum
     uint16_t calculatedChecksum = calculateDailyVolumeChecksum(data);
     uint16_t storedChecksum = 0;
     fram.read(FRAM_ADDR_DAILY_CHECKSUM, (uint8_t*)&storedChecksum, 2);
     
+    Serial.printf("  Checksum: stored=%d, calc=%d\n", storedChecksum, calculatedChecksum);
+    
     if (calculatedChecksum != storedChecksum) {
-        LOG_WARNING("Daily volume checksum mismatch: stored=%d, calculated=%d", 
-                    storedChecksum, calculatedChecksum);
+        Serial.println("  CHECKSUM MISMATCH - rejecting data");
         return false;
     }
     
-    // Sanity check
+    // Sanity checks...
     if (data.volume_ml > 10000) {
-        LOG_WARNING("FRAM daily volume out of range: %d", data.volume_ml);
+        Serial.printf("  Volume out of range: %d\n", data.volume_ml);
         return false;
     }
     
-    // Validate date format (basic check)
     if (strlen(data.last_reset_date) != 10 || 
         data.last_reset_date[4] != '-' || 
         data.last_reset_date[7] != '-') {
-        LOG_WARNING("Invalid date format in FRAM: %s", data.last_reset_date);
+        Serial.printf("  Invalid date format: '%s'\n", data.last_reset_date);
         return false;
     }
     
-    // Return values
     dailyVolume = data.volume_ml;
     if (resetDate) {
         strcpy(resetDate, data.last_reset_date);
     }
     
-    LOG_INFO("✅ Daily volume loaded from FRAM: %dml (date: %s)", 
-             dailyVolume, data.last_reset_date);
-    
+    Serial.printf("  SUCCESS: returning %dml, '%s'\n", dailyVolume, data.last_reset_date);
     return true;
 }

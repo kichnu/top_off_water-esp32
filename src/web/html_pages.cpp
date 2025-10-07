@@ -537,7 +537,8 @@ const char* DASHBOARD_HTML = R"rawliteral(
                 statusSpan.textContent = 'Update cancelled';
                 statusSpan.style.color = '#f39c12';
                 // Reload original value
-                loadVolumePerSecond();
+                loadVolumePerSecond(); 
+        
                 return;
             }
             
@@ -556,6 +557,11 @@ const char* DASHBOARD_HTML = R"rawliteral(
                 if (data.success) {
                     statusSpan.textContent = `Updated: ${volumeValue.toFixed(1)} ml/s`;
                     statusSpan.style.color = '#27ae60';
+
+                setTimeout(() => {
+                    loadVolumePerSecond();
+                }, 1000);
+                
                 } else {
                     statusSpan.textContent = `Error: ${data.error || 'Update failed'}`;
                     statusSpan.style.color = '#e74c3c';
@@ -670,7 +676,7 @@ const char* DASHBOARD_HTML = R"rawliteral(
                     console.error('Status update failed:', error);
                 });
 
-            loadVolumePerSecond();
+            // loadVolumePerSecond();
         }
 
         function formatUptime(milliseconds) {
@@ -762,6 +768,8 @@ const char* DASHBOARD_HTML = R"rawliteral(
 
         loadVolumePerSecond();
         loadStatistics(); 
+        }
+        }
     </script>
 </body>
 </html>

@@ -20,7 +20,7 @@
 #define TIME_GAP_2_MAX          15    // 300/5 min - max oczekiwanie na drugi czujnik (TRYB_2)
 #define THRESHOLD_1             10    // 180/3 min - próg dla TIME_GAP_1
 #define THRESHOLD_2             10     // 60/1 min - próg dla TIME_GAP_2
-#define WATER_TRIGGER_MAX_TIME  20    // 120/2 min - max czas na reakcję czujników po starcie pompy
+#define WATER_TRIGGER_MAX_TIME  120    // 120/2 min - max czas na reakcję czujników po starcie pompy
 #define THRESHOLD_WATER         10     // 30s - próg dla WATER_TRIGGER_TIME
 #define LOGGING_TIME            5      // 5s - czas na logowanie po cyklu
 #define SENSOR_DEBOUNCE_TIME    1      // 1s - debouncing czujników

@@ -389,62 +389,111 @@ void initializeRTC() {
 // PUBLIC API
 // ===============================
 
+
+// rtc_controller.cpp - String getCurrentTimestamp()
+
+// rtc_controller.cpp - String getCurrentTimestamp()
+
 String getCurrentTimestamp() {
     if (!rtcInitialized) {
+        static uint32_t lastWarning = 0;
+        if (millis() - lastWarning > 30000) {
+            LOG_ERROR("RTC not initialized in getCurrentTimestamp()");
+            lastWarning = millis();
+        }
         return "RTC_NOT_INITIALIZED";
     }
     
-    if (useInternalRTC) {
-        // Fallback: internal RTC (aktualizuj upływający czas)
-        unsigned long now = millis();
-        unsigned long elapsed = (now - internalTime.lastUpdate) / 1000;
-        
-        if (elapsed > 0) {
-            internalTime.second += elapsed;
-            while (internalTime.second >= 60) {
-                internalTime.second -= 60;
-                internalTime.minute++;
-                if (internalTime.minute >= 60) {
-                    internalTime.minute = 0;
-                    internalTime.hour++;
-                    if (internalTime.hour >= 24) {
-                        internalTime.hour = 0;
-                        internalTime.day++;
-                        if (internalTime.day > 28) {
-                            internalTime.day = 1;
-                            internalTime.month++;
-                            if (internalTime.month > 12) {
-                                internalTime.month = 1;
-                                internalTime.year++;
-                            }
-                        }
-                    }
-                }
-            }
-            internalTime.lastUpdate = now;
+    // 🆕 CRITICAL: Validate before returning
+    DateTime now = rtc.now();
+    
+    // Check if time is valid
+    if (now.year() < 2024 || now.year() > 2030) {
+        static uint32_t lastInvalidWarning = 0;
+        if (millis() - lastInvalidWarning > 10000) {
+            LOG_ERROR("RTC returned invalid year: %d", now.year());
+            LOG_ERROR("  Full: %04d-%02d-%02d %02d:%02d:%02d", 
+                     now.year(), now.month(), now.day(),
+                     now.hour(), now.minute(), now.second());
+            lastInvalidWarning = millis();
         }
         
-        char timeBuffer[32];
-        snprintf(timeBuffer, sizeof(timeBuffer), "%04d-%02d-%02d %02d:%02d:%02d",
-                 internalTime.year, internalTime.month, internalTime.day,
-                 internalTime.hour, internalTime.minute, internalTime.second);
-        
-        return String(timeBuffer);
-        
-    } else {
-        // ✅ Hardware RTC: konwertuj UTC na lokalny czas
-        DateTime rtc_utc = rtc.now();
-        time_t timestamp = rtc_utc.unixtime();
-        
-        struct tm local_time;
-        localtime_r(&timestamp, &local_time);  // ✅ Automatyczna konwersja TZ z DST
-        
-        char timeBuffer[32];
-        strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", &local_time);
-        
-        return String(timeBuffer);
+        // Return last known good timestamp or safe default
+        static String lastGoodTimestamp = "2025-10-06 12:00:00";
+        return lastGoodTimestamp;
     }
+    
+    // Get timezone-adjusted time
+    time_t utc = now.unixtime();
+    struct tm timeinfo;
+    localtime_r(&utc, &timeinfo);
+    
+    char buffer[32];
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
+    
+    // Save as last good timestamp
+    static String lastGoodTimestamp = String(buffer);
+    lastGoodTimestamp = String(buffer);
+    
+    return String(buffer);
 }
+
+// String getCurrentTimestamp() {
+//     if (!rtcInitialized) {
+//         return "RTC_NOT_INITIALIZED";
+//     }
+    
+//     if (useInternalRTC) {
+//         // Fallback: internal RTC (aktualizuj upływający czas)
+//         unsigned long now = millis();
+//         unsigned long elapsed = (now - internalTime.lastUpdate) / 1000;
+        
+//         if (elapsed > 0) {
+//             internalTime.second += elapsed;
+//             while (internalTime.second >= 60) {
+//                 internalTime.second -= 60;
+//                 internalTime.minute++;
+//                 if (internalTime.minute >= 60) {
+//                     internalTime.minute = 0;
+//                     internalTime.hour++;
+//                     if (internalTime.hour >= 24) {
+//                         internalTime.hour = 0;
+//                         internalTime.day++;
+//                         if (internalTime.day > 28) {
+//                             internalTime.day = 1;
+//                             internalTime.month++;
+//                             if (internalTime.month > 12) {
+//                                 internalTime.month = 1;
+//                                 internalTime.year++;
+//                             }
+//                         }
+//                     }
+//                 }
+//             }
+//             internalTime.lastUpdate = now;
+//         }
+        
+//         char timeBuffer[32];
+//         snprintf(timeBuffer, sizeof(timeBuffer), "%04d-%02d-%02d %02d:%02d:%02d",
+//                  internalTime.year, internalTime.month, internalTime.day,
+//                  internalTime.hour, internalTime.minute, internalTime.second);
+        
+//         return String(timeBuffer);
+        
+//     } else {
+//         // ✅ Hardware RTC: konwertuj UTC na lokalny czas
+//         DateTime rtc_utc = rtc.now();
+//         time_t timestamp = rtc_utc.unixtime();
+        
+//         struct tm local_time;
+//         localtime_r(&timestamp, &local_time);  // ✅ Automatyczna konwersja TZ z DST
+        
+//         char timeBuffer[32];
+//         strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", &local_time);
+        
+//         return String(timeBuffer);
+//     }
+// }
 
 unsigned long getUnixTimestamp() {
     if (!rtcInitialized) {

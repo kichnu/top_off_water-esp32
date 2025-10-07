@@ -95,7 +95,6 @@ void setupProgrammingMode() {
 }
 #else
 
-
 void setupProductionMode() {
     Serial.println();
     Serial.println("=== ESP32-C3 Water System Starting ===");
@@ -107,24 +106,24 @@ void setupProductionMode() {
     initPumpController();
 
     // Initialize storage and load settings
-    initNVS(); 
+    initNVS();
     loadVolumeFromNVS();
 
     bool credentials_loaded = initCredentialsManager();
     
-    // *** Print Device ID AFTER credentials loading ***
+    // Print Device ID AFTER credentials loading
     Serial.print("Device ID: ");
     if (credentials_loaded) {
         Serial.println(getDeviceID());
     } else {
         Serial.println("FALLBACK_MODE");
     }
- 
-    // 🆕 CHANGED: Initialize WiFi BEFORE RTC (for NTP sync)
+    
+    // Initialize WiFi BEFORE RTC (for NTP sync)
     Serial.println("[INIT] Initializing network...");
     initWiFi();
     
-    // 🆕 CHANGED: Initialize RTC AFTER WiFi (can use NTP)
+    // Initialize RTC AFTER WiFi (can use NTP)
     initializeRTC();
     Serial.print("RTC Status: ");
     Serial.println(getRTCInfo());
@@ -140,6 +139,23 @@ void setupProductionMode() {
     // Initialize web server
     initWebServer();
     
+    // 🆕 NEW: Log water algorithm state AFTER all systems initialized
+    Serial.println();
+    Serial.println("====================================");
+    Serial.println("WATER ALGORITHM POST-INIT STATUS");
+    Serial.println("====================================");
+    
+    // Use logging system (now available)
+    LOG_INFO("Water Algorithm Status:");
+    LOG_INFO("  Daily Volume: %d ml / %d ml", 
+             waterAlgorithm.getDailyVolume(), FILL_WATER_MAX);
+    LOG_INFO("  Last Reset Date: '%s'", waterAlgorithm.getLastResetDate());
+    LOG_INFO("  Current State: %s", waterAlgorithm.getStateString());
+    // LOG_INFO("  Reset Pending: %s", waterAlgorithm.resetPending() ? "YES" : "NO");
+    
+    Serial.println("====================================");
+    Serial.println();
+    
     Serial.println("=== System initialization complete ===");
     if (isWiFiConnected()) {
         Serial.print("Dashboard: http://");
@@ -148,6 +164,60 @@ void setupProductionMode() {
     Serial.print("Current time: ");
     Serial.println(getCurrentTimestamp());
 }
+
+
+// void setupProductionMode() {
+//     Serial.println();
+//     Serial.println("=== ESP32-C3 Water System Starting ===");
+//     Serial.println("Production Mode - Full Water System");
+//     Serial.print("Device ID: ");
+//     Serial.println("TEMPORARY_DEVICE_ID");
+
+//     initWaterSensors();
+//     initPumpController();
+
+//     // Initialize storage and load settings
+//     initNVS(); 
+//     loadVolumeFromNVS();
+
+//     bool credentials_loaded = initCredentialsManager();
+    
+//     // *** Print Device ID AFTER credentials loading ***
+//     Serial.print("Device ID: ");
+//     if (credentials_loaded) {
+//         Serial.println(getDeviceID());
+//     } else {
+//         Serial.println("FALLBACK_MODE");
+//     }
+ 
+//     // 🆕 CHANGED: Initialize WiFi BEFORE RTC (for NTP sync)
+//     Serial.println("[INIT] Initializing network...");
+//     initWiFi();
+    
+//     // 🆕 CHANGED: Initialize RTC AFTER WiFi (can use NTP)
+//     initializeRTC();
+//     Serial.print("RTC Status: ");
+//     Serial.println(getRTCInfo());
+    
+//     // Initialize security
+//     initAuthManager();
+//     initSessionManager();
+//     initRateLimiter();
+    
+//     // Initialize VPS logger
+//     initVPSLogger();
+    
+//     // Initialize web server
+//     initWebServer();
+    
+//     Serial.println("=== System initialization complete ===");
+//     if (isWiFiConnected()) {
+//         Serial.print("Dashboard: http://");
+//         Serial.println(getLocalIP().toString());
+//     }
+//     Serial.print("Current time: ");
+//     Serial.println(getCurrentTimestamp());
+// }
 #endif
 
 // ===============================
@@ -156,21 +226,9 @@ void setupProductionMode() {
 
 void loop() {
 #if MODE_PROGRAMMING
-    // Programming mode loop - CLI interface
     static unsigned long lastBlink = 0;
     unsigned long now = millis();
-
-    // Handle CLI commands
     handleCLI();
-    
-    // Status LED heartbeat (slow blink in programming mode)
-    // if (now - lastBlink >= 1000) {
-    //     pinMode(STATUS_LED_PIN, OUTPUT);
-    //     digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
-    //     lastBlink = now;
-    // }
-    
-    // CLI handling will be added here
     delay(10);
     
 #else
@@ -216,25 +274,10 @@ void loop() {
         
         lastUpdate = now;
     }
-    
-    // Status LED heartbeat (slow blink when OK, fast when issues)
+
     static unsigned long lastBlink = 0;
     unsigned long blinkInterval = (isWiFiConnected() && isRTCWorking()) ? 2000 : 500;
     
-    // if (now - lastBlink >= blinkInterval) {
-    //     digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
-    //     lastBlink = now;
-    // }
-
-    // if (now - lastBlink >= blinkInterval) {
-    //     // ✅ HEARTBEAT tylko gdy algorithm nie jest w stanie ERROR
-    //     if (waterAlgorithm.getState() != STATE_ERROR) {
-    //         pinMode(STATUS_LED_PIN, OUTPUT);
-    //         digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
-    //     }
-    //     // Gdy jest ERROR, error signal handling jest w water_algorithm.cpp
-    //     lastBlink = now;
-    // }
     delay(100);
 #endif
 }
