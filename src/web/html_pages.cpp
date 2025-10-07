@@ -768,8 +768,6 @@ const char* DASHBOARD_HTML = R"rawliteral(
 
         loadVolumePerSecond();
         loadStatistics(); 
-        }
-        }
     </script>
 </body>
 </html>

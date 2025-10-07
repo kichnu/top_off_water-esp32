@@ -298,149 +298,6 @@ void WaterAlgorithm::resetCycle() {
     waterFailDetected = false;
 }
 // 8888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888
-// void WaterAlgorithm::update() {
-//     // Check for reset button in error state
-//     if (currentState == STATE_ERROR) {
-//         if (digitalRead(RESET_PIN) == LOW) {
-//             LOG_INFO("Reset button pressed, clearing error");
-//             resetFromError();
-//         }
-//         updateErrorSignal();
-//         return;
-//     }
-    
-//     String currentDateStr = getCurrentTimestamp().substring(0, 10); // "YYYY-MM-DD"
-//     // String currentDateStr = "2025-10-06";
-
-
-//     // Check if date changed
-//     if (currentDateStr != String(lastResetDate)) {
-//         // Date changed - schedule reset
-//         if (isPumpActive()) {
-//             // Pump is running - delay reset until pump finishes
-//             if (!resetPending) {
-//                 LOG_INFO("⏳ Date changed to %s, reset delayed (pump active)", 
-//                          currentDateStr.c_str());
-//                 resetPending = true;
-//             }
-//         } else {
-//             // No pump active - reset immediately
-//             LOG_INFO("🔄 Date changed: %s → %s, resetting daily volume", 
-//                      lastResetDate, currentDateStr.c_str());
-            
-//             dailyVolumeML = 0;
-//             todayCycles.clear();
-//             strncpy(lastResetDate, currentDateStr.c_str(), 11);
-//             lastResetDate[11] = '\0';
-//             saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
-//             resetPending = false;
-            
-//             LOG_INFO("✅ Daily volume reset: 0ml (new day: %s)", lastResetDate);
-//         }
-//     }
-    
-//     // 🆕 NEW: Execute delayed reset when pump finishes
-//     if (resetPending && !isPumpActive() && currentState == STATE_IDLE) {
-//         LOG_INFO("🔄 Executing delayed reset (pump finished)");
-        
-//         dailyVolumeML = 0;
-//         todayCycles.clear();
-//         strncpy(lastResetDate, currentDateStr.c_str(), 11);
-//         lastResetDate[11] = '\0';
-//         saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
-//         resetPending = false;
-        
-//         LOG_INFO("✅ Daily volume reset: 0ml (new day: %s)", lastResetDate);
-//     }
-    
-//     uint32_t currentTime = getCurrentTimeSeconds();
-//     uint32_t stateElapsed = currentTime - stateStartTime;
-
-// src/algorithm/water_algorithm.cpp - void WaterAlgorithm::update()
-
-// void WaterAlgorithm::update() {
-//     // Check for reset button in error state
-//     if (currentState == STATE_ERROR) {
-//         if (digitalRead(RESET_PIN) == LOW) {
-//             LOG_INFO("Reset button pressed, clearing error");
-//             resetFromError();
-//         }
-//         updateErrorSignal();
-//         return;
-//     }
-    
-//     // Get current RTC timestamp
-//     String fullTimestamp = getCurrentTimestamp();
-    
-//     // Validate timestamp format
-//     if (fullTimestamp.length() < 10) {
-//         static uint32_t lastWarning = 0;
-//         if (millis() - lastWarning > 30000) {
-//             LOG_ERROR("Invalid timestamp from RTC: '%s' (length: %d)", 
-//                       fullTimestamp.c_str(), fullTimestamp.length());
-//             LOG_ERROR("RTC Info: %s", getRTCInfo().c_str());
-//             lastWarning = millis();
-//         }
-//         // Skip date check if timestamp invalid
-//         return;
-//     }
-    
-//     String currentDateStr = fullTimestamp.substring(0, 10);
-    
-//     // Validate date format (YYYY-MM-DD)
-//     if (currentDateStr.length() != 10 || 
-//         currentDateStr[4] != '-' || 
-//         currentDateStr[7] != '-') {
-//         static uint32_t lastFormatWarning = 0;
-//         if (millis() - lastFormatWarning > 30000) {
-//             LOG_ERROR("Invalid date format: '%s' (expected YYYY-MM-DD)", 
-//                       currentDateStr.c_str());
-//             lastFormatWarning = millis();
-//         }
-//         return;
-//     }
-    
-//     // Validate year (2024-2030)
-//     int year = currentDateStr.substring(0, 4).toInt();
-//     if (year < 2024 || year > 2030) {
-//         static uint32_t lastYearWarning = 0;
-//         if (millis() - lastYearWarning > 30000) {
-//             LOG_ERROR("Year out of valid range: %d (from date: %s)", 
-//                       year, currentDateStr.c_str());
-//             LOG_ERROR("Full timestamp: %s", fullTimestamp.c_str());
-//             LOG_ERROR("RTC Info: %s", getRTCInfo().c_str());
-//             lastYearWarning = millis();
-//         }
-//         return;  // CRITICAL: Skip reset if year invalid!
-//     }
-    
-//     // LOG EVERY COMPARISON (for debugging)
-//     static uint32_t lastComparisonLog = 0;
-//     static String lastLoggedDate = "";
-    
-//     if (millis() - lastComparisonLog > 60000 || 
-//         currentDateStr != lastLoggedDate) {
-//         LOG_INFO("DATE CHECK: current='%s' vs last='%s' (match=%s)", 
-//                  currentDateStr.c_str(), 
-//                  lastResetDate,
-//                  (currentDateStr == String(lastResetDate)) ? "YES" : "NO");
-//         lastComparisonLog = millis();
-//         lastLoggedDate = currentDateStr;
-//     }
-    
-//     // Check if date changed
-//     if (currentDateStr != String(lastResetDate)) {
-//         LOG_WARNING("===========================================");
-//         LOG_WARNING("DATE CHANGE DETECTED - RESET TRIGGERED!");
-//         LOG_WARNING("===========================================");
-//         LOG_WARNING("Previous date: '%s' (len=%d)", lastResetDate, strlen(lastResetDate));
-//         LOG_WARNING("Current date:  '%s' (len=%d)", currentDateStr.c_str(), currentDateStr.length());
-//         LOG_WARNING("Full timestamp: %s", fullTimestamp.c_str());
-//         LOG_WARNING("RTC Info: %s", getRTCInfo().c_str());
-//         LOG_WARNING("Year validated: %d (2024-2030)", year);
-//         LOG_WARNING("Daily volume BEFORE reset: %dml", dailyVolumeML);
-//         LOG_WARNING("===========================================");
-
 
 
 void WaterAlgorithm::update() {
@@ -448,22 +305,34 @@ void WaterAlgorithm::update() {
     
     // Get current RTC timestamp
     String fullTimestamp = getCurrentTimestamp();
+    String currentDateStr = fullTimestamp.substring(0, 10);
+    int year = currentDateStr.substring(0, 4).toInt();
     
     // Validate timestamp format
-    if (fullTimestamp.length() < 10) {
-        static uint32_t lastWarning = 0;
-        if (millis() - lastWarning > 30000) {
-            LOG_ERROR("Invalid timestamp from RTC: '%s' (length: %d)", 
-                      fullTimestamp.c_str(), fullTimestamp.length());
-            LOG_ERROR("RTC Info: %s", getRTCInfo().c_str());
-            lastWarning = millis();
+    // if (fullTimestamp.length() < 10) {
+    //     static uint32_t lastWarning = 0;
+    //     if (millis() - lastWarning > 30000) {
+    //         LOG_ERROR("Invalid timestamp from RTC: '%s' (length: %d)", 
+    //                   fullTimestamp.c_str(), fullTimestamp.length());
+    //         LOG_ERROR("RTC Info: %s", getRTCInfo().c_str());
+    //         lastWarning = millis();
+    //     }
+    //     return;
+    // }
+
+    if (fullTimestamp == "RTC_ERROR" || 
+        fullTimestamp == "RTC_NOT_INITIALIZED" ||
+        fullTimestamp.length() < 10) {
+        static uint32_t lastRTCError = 0;
+        if (millis() - lastRTCError > 30000) {
+            LOG_ERROR("Skipping date check - RTC error: '%s'", fullTimestamp.c_str());
+            lastRTCError = millis();
         }
-        return;
+        
+        // Continue with rest of update (skip date reset logic)
+        goto skip_date_check;
     }
-    
-    String currentDateStr = fullTimestamp.substring(0, 10);
-    
-    // Validate date format
+
     if (currentDateStr.length() != 10 || 
         currentDateStr[4] != '-' || 
         currentDateStr[7] != '-') {
@@ -472,11 +341,24 @@ void WaterAlgorithm::update() {
             LOG_ERROR("Invalid date format: '%s'", currentDateStr.c_str());
             lastFormatWarning = millis();
         }
-        return;
+        goto skip_date_check;  // Skip date check
     }
     
+    
+    // Validate date format
+    // if (currentDateStr.length() != 10 || 
+    //     currentDateStr[4] != '-' || 
+    //     currentDateStr[7] != '-') {
+    //     static uint32_t lastFormatWarning = 0;
+    //     if (millis() - lastFormatWarning > 30000) {
+    //         LOG_ERROR("Invalid date format: '%s'", currentDateStr.c_str());
+    //         lastFormatWarning = millis();
+    //     }
+    //     return;
+    // }
+    
     // Validate year
-    int year = currentDateStr.substring(0, 4).toInt();
+  
     if (year < 2024 || year > 2030) {
         static uint32_t lastYearWarning = 0;
         if (millis() - lastYearWarning > 30000) {
@@ -486,7 +368,7 @@ void WaterAlgorithm::update() {
             LOG_ERROR("RTC Info: %s", getRTCInfo().c_str());
             lastYearWarning = millis();
         }
-        return;
+        goto skip_date_check;  // Skip date check
     }
     
     // CRITICAL: Check if lastResetDate is corrupted
@@ -503,7 +385,7 @@ void WaterAlgorithm::update() {
         saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
         
         LOG_INFO("lastResetDate reinitialized to: %s", lastResetDate);
-        return;  // Skip this cycle
+        goto skip_date_check;
     }
     
     // Log comparison periodically
@@ -521,7 +403,68 @@ void WaterAlgorithm::update() {
     }
     
     // Check if date changed
+    // if (currentDateStr != String(lastResetDate)) {
+    //     LOG_WARNING("===========================================");
+    //     LOG_WARNING("DATE CHANGE DETECTED - RESET TRIGGERED!");
+    //     LOG_WARNING("===========================================");
+    //     LOG_WARNING("Previous date: '%s' (len=%d)", lastResetDate, strlen(lastResetDate));
+    //     LOG_WARNING("Current date:  '%s' (len=%d)", currentDateStr.c_str(), currentDateStr.length());
+    //     LOG_WARNING("Full timestamp: %s", fullTimestamp.c_str());
+    //     LOG_WARNING("RTC Info: %s", getRTCInfo().c_str());
+    //     LOG_WARNING("Year validated: %d (2024-2030)", year);
+    //     LOG_WARNING("Daily volume BEFORE reset: %dml", dailyVolumeML);
+    //     LOG_WARNING("===========================================");
+
+
+        
+    //     // Date changed - schedule reset
+    //     if (isPumpActive()) {
+    //         // Pump is running - delay reset until pump finishes
+    //         if (!resetPending) {
+    //             LOG_INFO("Reset delayed - pump active");
+    //             resetPending = true;
+    //         }
+    //     } else {
+    //         // No pump active - reset immediately
+    //         dailyVolumeML = 0;
+    //         todayCycles.clear();
+    //         strncpy(lastResetDate, currentDateStr.c_str(), 11);
+    //         lastResetDate[11] = '\0';
+    //         saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
+    //         resetPending = false;
+            
+    //         LOG_WARNING("RESET EXECUTED: dailyVolumeML = 0ml, new date = %s", lastResetDate);
+    //         LOG_WARNING("===========================================");
+    //     }
+    // }
+
     if (currentDateStr != String(lastResetDate)) {
+        // Parse dates to compare
+        int lastYear = String(lastResetDate).substring(0, 4).toInt();
+        int lastMonth = String(lastResetDate).substring(5, 7).toInt();
+        int lastDay = String(lastResetDate).substring(8, 10).toInt();
+        
+        int currYear = currentDateStr.substring(0, 4).toInt();
+        int currMonth = currentDateStr.substring(5, 7).toInt();
+        int currDay = currentDateStr.substring(8, 10).toInt();
+        
+        // Calculate which is newer
+        long lastDate = lastYear * 10000 + lastMonth * 100 + lastDay;
+        long currDate = currYear * 10000 + currMonth * 100 + currDay;
+        
+        if (currDate < lastDate) {
+            // Current date is OLDER than last reset date - this is an error!
+            LOG_ERROR("===========================================");
+            LOG_ERROR("DATE REGRESSION DETECTED - IGNORING!");
+            LOG_ERROR("===========================================");
+            LOG_ERROR("Last reset date: %s (%ld)", lastResetDate, lastDate);
+            LOG_ERROR("Current date:    %s (%ld)", currentDateStr.c_str(), currDate);
+            LOG_ERROR("This indicates RTC error - ignoring reset");
+            LOG_ERROR("===========================================");
+            goto skip_date_check;  // Don't reset if date goes backward!
+        }
+        
+        // Date moved forward - legitimate reset
         LOG_WARNING("===========================================");
         LOG_WARNING("DATE CHANGE DETECTED - RESET TRIGGERED!");
         LOG_WARNING("===========================================");
@@ -532,19 +475,14 @@ void WaterAlgorithm::update() {
         LOG_WARNING("Year validated: %d (2024-2030)", year);
         LOG_WARNING("Daily volume BEFORE reset: %dml", dailyVolumeML);
         LOG_WARNING("===========================================");
-
-
         
-        // Date changed - schedule reset
         if (isPumpActive()) {
-            // Pump is running - delay reset until pump finishes
             if (!resetPending) {
                 LOG_INFO("Reset delayed - pump active");
                 resetPending = true;
             }
         } else {
-            // No pump active - reset immediately
-            dailyVolumeML = 0;
+            // dailyVolumeML = 0;
             todayCycles.clear();
             strncpy(lastResetDate, currentDateStr.c_str(), 11);
             lastResetDate[11] = '\0';
@@ -570,7 +508,8 @@ void WaterAlgorithm::update() {
         
         LOG_INFO("Delayed reset complete: 0ml (date: %s)", lastResetDate);
     }
-    
+
+    skip_date_check:
     uint32_t currentTime = getCurrentTimeSeconds();
     uint32_t stateElapsed = currentTime - stateStartTime;
 

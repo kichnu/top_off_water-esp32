@@ -390,40 +390,114 @@ void initializeRTC() {
 // ===============================
 
 
-// rtc_controller.cpp - String getCurrentTimestamp()
+// String getCurrentTimestamp() {
+//     if (!rtcInitialized) {
+//         static uint32_t lastWarning = 0;
+//         if (millis() - lastWarning > 30000) {
+//             LOG_ERROR("RTC not initialized in getCurrentTimestamp()");
+//             lastWarning = millis();
+//         }
+//         return "RTC_NOT_INITIALIZED";
+//     }
+    
+//     // 🆕 CRITICAL: Validate before returning
+//     DateTime now = rtc.now();
+    
+//     // Check if time is valid
+//     if (now.year() < 2024 || now.year() > 2030) {
+//         static uint32_t lastInvalidWarning = 0;
+//         if (millis() - lastInvalidWarning > 10000) {
+//             LOG_ERROR("RTC returned invalid year: %d", now.year());
+//             LOG_ERROR("  Full: %04d-%02d-%02d %02d:%02d:%02d", 
+//                      now.year(), now.month(), now.day(),
+//                      now.hour(), now.minute(), now.second());
+//             lastInvalidWarning = millis();
+//         }
+        
+//         // Return last known good timestamp or safe default
+//         static String lastGoodTimestamp = "2025-10-06 12:00:00";
+//         return lastGoodTimestamp;
+//     }
+    
+//     // Get timezone-adjusted time
+//     time_t utc = now.unixtime();
+//     struct tm timeinfo;
+//     localtime_r(&utc, &timeinfo);
+    
+//     char buffer[32];
+//     strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
+    
+//     // Save as last good timestamp
+//     static String lastGoodTimestamp = String(buffer);
+//     lastGoodTimestamp = String(buffer);
+    
+//     return String(buffer);
+// }
 
-// rtc_controller.cpp - String getCurrentTimestamp()
+
+// src/hardware/rtc_controller.cpp
 
 String getCurrentTimestamp() {
+    static String lastValidTimestamp = "";  // Cache last valid timestamp
+    static uint32_t lastValidTime = 0;      // When was it valid
+    
     if (!rtcInitialized) {
         static uint32_t lastWarning = 0;
         if (millis() - lastWarning > 30000) {
             LOG_ERROR("RTC not initialized in getCurrentTimestamp()");
             lastWarning = millis();
         }
-        return "RTC_NOT_INITIALIZED";
+        return lastValidTimestamp.length() > 0 ? lastValidTimestamp : "RTC_NOT_INITIALIZED";
     }
     
-    // 🆕 CRITICAL: Validate before returning
-    DateTime now = rtc.now();
+    // 🆕 RETRY MECHANISM: Try multiple times if we get invalid data
+    const int MAX_RETRIES = 3;
+    DateTime now;
+    bool validRead = false;
     
-    // Check if time is valid
-    if (now.year() < 2024 || now.year() > 2030) {
-        static uint32_t lastInvalidWarning = 0;
-        if (millis() - lastInvalidWarning > 10000) {
-            LOG_ERROR("RTC returned invalid year: %d", now.year());
-            LOG_ERROR("  Full: %04d-%02d-%02d %02d:%02d:%02d", 
-                     now.year(), now.month(), now.day(),
-                     now.hour(), now.minute(), now.second());
-            lastInvalidWarning = millis();
+    for (int retry = 0; retry < MAX_RETRIES; retry++) {
+        now = rtc.now();
+        
+        // Check if read is valid
+        if (now.year() >= 2024 && now.year() <= 2030) {
+            validRead = true;
+            break;
         }
         
-        // Return last known good timestamp or safe default
-        static String lastGoodTimestamp = "2025-10-06 12:00:00";
-        return lastGoodTimestamp;
+        // Invalid read - log and retry
+        if (retry == 0) {  // Only log first failure
+            LOG_WARNING("RTC read invalid (attempt %d/%d): %04d-%02d-%02d", 
+                       retry + 1, MAX_RETRIES,
+                       now.year(), now.month(), now.day());
+        }
+        
+        delay(10);  // Short delay before retry
     }
     
-    // Get timezone-adjusted time
+    if (!validRead) {
+        // All retries failed
+        static uint32_t lastError = 0;
+        if (millis() - lastError > 10000) {
+            LOG_ERROR("RTC read failed after %d retries: %04d-%02d-%02d %02d:%02d:%02d",
+                     MAX_RETRIES,
+                     now.year(), now.month(), now.day(),
+                     now.hour(), now.minute(), now.second());
+            LOG_ERROR("RTC Info: %s", getRTCInfo().c_str());
+            lastError = millis();
+        }
+        
+        // 🆕 CRITICAL: Use cached value if recent (< 10 seconds old)
+        if (lastValidTimestamp.length() > 0 && 
+            (millis() - lastValidTime) < 10000) {
+            LOG_WARNING("Using cached timestamp (age: %dms)", millis() - lastValidTime);
+            return lastValidTimestamp;
+        }
+        
+        // No recent cache - return error
+        return "RTC_ERROR";
+    }
+    
+    // Valid read - process and cache
     time_t utc = now.unixtime();
     struct tm timeinfo;
     localtime_r(&utc, &timeinfo);
@@ -431,69 +505,14 @@ String getCurrentTimestamp() {
     char buffer[32];
     strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
     
-    // Save as last good timestamp
-    static String lastGoodTimestamp = String(buffer);
-    lastGoodTimestamp = String(buffer);
+    // Update cache
+    lastValidTimestamp = String(buffer);
+    lastValidTime = millis();
     
     return String(buffer);
 }
 
-// String getCurrentTimestamp() {
-//     if (!rtcInitialized) {
-//         return "RTC_NOT_INITIALIZED";
-//     }
-    
-//     if (useInternalRTC) {
-//         // Fallback: internal RTC (aktualizuj upływający czas)
-//         unsigned long now = millis();
-//         unsigned long elapsed = (now - internalTime.lastUpdate) / 1000;
-        
-//         if (elapsed > 0) {
-//             internalTime.second += elapsed;
-//             while (internalTime.second >= 60) {
-//                 internalTime.second -= 60;
-//                 internalTime.minute++;
-//                 if (internalTime.minute >= 60) {
-//                     internalTime.minute = 0;
-//                     internalTime.hour++;
-//                     if (internalTime.hour >= 24) {
-//                         internalTime.hour = 0;
-//                         internalTime.day++;
-//                         if (internalTime.day > 28) {
-//                             internalTime.day = 1;
-//                             internalTime.month++;
-//                             if (internalTime.month > 12) {
-//                                 internalTime.month = 1;
-//                                 internalTime.year++;
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//             internalTime.lastUpdate = now;
-//         }
-        
-//         char timeBuffer[32];
-//         snprintf(timeBuffer, sizeof(timeBuffer), "%04d-%02d-%02d %02d:%02d:%02d",
-//                  internalTime.year, internalTime.month, internalTime.day,
-//                  internalTime.hour, internalTime.minute, internalTime.second);
-        
-//         return String(timeBuffer);
-        
-//     } else {
-//         // ✅ Hardware RTC: konwertuj UTC na lokalny czas
-//         DateTime rtc_utc = rtc.now();
-//         time_t timestamp = rtc_utc.unixtime();
-        
-//         struct tm local_time;
-//         localtime_r(&timestamp, &local_time);  // ✅ Automatyczna konwersja TZ z DST
-        
-//         char timeBuffer[32];
-//         strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", &local_time);
-        
-//         return String(timeBuffer);
-//     }
-// }
+
 
 unsigned long getUnixTimestamp() {
     if (!rtcInitialized) {
