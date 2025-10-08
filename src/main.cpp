@@ -13,6 +13,7 @@
 #include "hardware/fram_controller.h"
 #include "hardware/hardware_pins.h"
 #include "cli/cli_handler.h" 
+#include "hardware/time_cache.h"
 
 #if MODE_PROGRAMMING
 void setupProgrammingMode();
@@ -99,19 +100,15 @@ void setupProductionMode() {
     Serial.println();
     Serial.println("=== ESP32-C3 Water System Starting ===");
     Serial.println("Production Mode - Full Water System");
-    Serial.print("Device ID: ");
-    Serial.println("TEMPORARY_DEVICE_ID");
 
     initWaterSensors();
     initPumpController();
 
-    // Initialize storage and load settings
     initNVS();
     loadVolumeFromNVS();
 
     bool credentials_loaded = initCredentialsManager();
     
-    // Print Device ID AFTER credentials loading
     Serial.print("Device ID: ");
     if (credentials_loaded) {
         Serial.println(getDeviceID());
@@ -119,14 +116,35 @@ void setupProductionMode() {
         Serial.println("FALLBACK_MODE");
     }
     
-    // Initialize WiFi BEFORE RTC (for NTP sync)
     Serial.println("[INIT] Initializing network...");
     initWiFi();
     
-    // Initialize RTC AFTER WiFi (can use NTP)
+    // 🆕 Initialize RTC
+    Serial.println("[INIT] Initializing RTC...");
     initializeRTC();
     Serial.print("RTC Status: ");
     Serial.println(getRTCInfo());
+    
+    // 🆕 CRITICAL: Wait for RTC to stabilize
+    Serial.println("[INIT] Waiting for RTC to stabilize...");
+    delay(2000);  // 2 second delay
+    
+    // 🆕 Initialize time cache (with retry)
+    Serial.println("[INIT] Initializing time cache...");
+    initTimeCache();
+    
+    // 🆕 Verify cache before proceeding
+    if (!globalTimeCache.isValid) {
+        Serial.println("⚠️ WARNING: Time cache initialization failed");
+        Serial.println("⚠️ Daily volume tracking will be suspended");
+        Serial.println("⚠️ System will auto-recover when RTC becomes available");
+    } else {
+        Serial.println("✅ Time cache initialized successfully");
+    }
+    
+    // 🆕 Initialize daily volume (AFTER RTC + cache)
+    Serial.println("[INIT] Initializing daily volume tracking...");
+    waterAlgorithm.initDailyVolume();
     
     // Initialize security
     initAuthManager();
@@ -139,19 +157,19 @@ void setupProductionMode() {
     // Initialize web server
     initWebServer();
     
-    // 🆕 NEW: Log water algorithm state AFTER all systems initialized
+    // Post-init diagnostics
     Serial.println();
     Serial.println("====================================");
-    Serial.println("WATER ALGORITHM POST-INIT STATUS");
+    Serial.println("SYSTEM POST-INIT STATUS");
     Serial.println("====================================");
     
-    // Use logging system (now available)
-    LOG_INFO("Water Algorithm Status:");
+    LOG_INFO("Time Cache: %s", globalTimeCache.isValid ? "VALID" : "INVALID");
+    LOG_INFO("Current Date: %s", getCachedDate());
+    LOG_INFO("Water Algorithm:");
     LOG_INFO("  Daily Volume: %d ml / %d ml", 
              waterAlgorithm.getDailyVolume(), FILL_WATER_MAX);
     LOG_INFO("  Last Reset Date: '%s'", waterAlgorithm.getLastResetDate());
     LOG_INFO("  Current State: %s", waterAlgorithm.getStateString());
-    // LOG_INFO("  Reset Pending: %s", waterAlgorithm.resetPending() ? "YES" : "NO");
     
     Serial.println("====================================");
     Serial.println();
@@ -165,59 +183,6 @@ void setupProductionMode() {
     Serial.println(getCurrentTimestamp());
 }
 
-
-// void setupProductionMode() {
-//     Serial.println();
-//     Serial.println("=== ESP32-C3 Water System Starting ===");
-//     Serial.println("Production Mode - Full Water System");
-//     Serial.print("Device ID: ");
-//     Serial.println("TEMPORARY_DEVICE_ID");
-
-//     initWaterSensors();
-//     initPumpController();
-
-//     // Initialize storage and load settings
-//     initNVS(); 
-//     loadVolumeFromNVS();
-
-//     bool credentials_loaded = initCredentialsManager();
-    
-//     // *** Print Device ID AFTER credentials loading ***
-//     Serial.print("Device ID: ");
-//     if (credentials_loaded) {
-//         Serial.println(getDeviceID());
-//     } else {
-//         Serial.println("FALLBACK_MODE");
-//     }
- 
-//     // 🆕 CHANGED: Initialize WiFi BEFORE RTC (for NTP sync)
-//     Serial.println("[INIT] Initializing network...");
-//     initWiFi();
-    
-//     // 🆕 CHANGED: Initialize RTC AFTER WiFi (can use NTP)
-//     initializeRTC();
-//     Serial.print("RTC Status: ");
-//     Serial.println(getRTCInfo());
-    
-//     // Initialize security
-//     initAuthManager();
-//     initSessionManager();
-//     initRateLimiter();
-    
-//     // Initialize VPS logger
-//     initVPSLogger();
-    
-//     // Initialize web server
-//     initWebServer();
-    
-//     Serial.println("=== System initialization complete ===");
-//     if (isWiFiConnected()) {
-//         Serial.print("Dashboard: http://");
-//         Serial.println(getLocalIP().toString());
-//     }
-//     Serial.print("Current time: ");
-//     Serial.println(getCurrentTimestamp());
-// }
 #endif
 
 // ===============================
