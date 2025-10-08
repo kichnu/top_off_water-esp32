@@ -31,7 +31,7 @@
 #define PUMP_MAX_ATTEMPTS       3      // Maksymalna liczba prób pompy w TRYB_2
 
 #define SINGLE_DOSE_VOLUME      100    // ml - objętość jednej dolewki
-#define FILL_WATER_MAX          2400   // ml - max dolewka na dobę
+#define FILL_WATER_MAX          5400   // ml - max dolewka na dobę
 
 // ============== SYGNALIZACJA BŁĘDÓW ==============
 #define ERROR_PULSE_HIGH        100    // ms - czas impulsu HIGH

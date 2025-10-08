@@ -250,6 +250,96 @@ const char* DASHBOARD_HTML = R"rawliteral(
         }
 
 
+
+
+
+        .pump-stats {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 2rem;
+            max-width: 1000px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .pump-stat {
+            background-color: #f7f7f7;
+            padding: 0.5rem 1rem;
+            border-radius: 1rem;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            min-width: 220px;
+            max-width: 260px;
+            min-height: 140px;
+            flex: 1 1 220px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .button-stats.btn-stat {
+            display: inline-block;
+            background-color: #e0e0e0;
+            color: #222;
+            font-weight: 600;
+            border: none;
+            border-radius: 0.6rem;
+            padding: 0.8rem 1.2rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            width: 100%;
+            max-width: 200px;
+        }
+
+        .button-stats.btn-stat:hover {
+            background-color: #d5d5d5;
+        }
+
+        .button-stats.btn-stat:active {
+            transform: scale(0.97);
+        }
+
+        .stats-values,
+        .stats-reset,
+        .stats-info {
+            margin-top: 0.8rem;
+            font-size: 0.9rem;
+            color: #222;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+
+        .stats-values span,
+        .stats-reset span,
+        .stats-info span {
+            font-weight: 700;
+            color: #000;
+        }
+
+        /* Responsywność */
+        @media (max-width: 800px) {
+            .pump-controls {
+                gap: 1.5rem;
+            }
+            .pump-control {
+                flex: 1 1 45%;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .pump-control {
+                flex: 1 1 100%;
+            }
+        }
+
+
+
+
+
+
+
+
+
+
         @media (max-width: 600px) {
             .status-grid { grid-template-columns: 1fr; }
             .pump-controls, .pomp-setting { flex-direction: column; }
@@ -317,27 +407,42 @@ const char* DASHBOARD_HTML = R"rawliteral(
 
         <div class="card">
             <h2>Statistic</h2>
-            <div class="pump-controls">
-                <div>
-                    <button id="loadStatsBtn" class="button btn-calibration btn-stat" onclick="manualLoadStatistics()">
+  
+            
+            
+            <div class="pump-stats">
+                <div class="pump-stat">
+                    <button id="loadStatsBtn" class="button btn-calibration" onclick="manualLoadStatistics()">
                         Load Statistics
                     </button>
+                    <div class="stats-values">
+                        Err activate: <span id="gap1Value"></span> Err deactivate: <span id="gap2Value"></span> Err pump: <span id="waterValue"></span>
+                    </div>
                 </div>
-                <div class="stats-values" id="statsValues">
-                    Err activate: <span id="gap1Value"></span> Err deactivate: <span id="gap2Value"></span> Err pump: <span id="waterValue"></span>
-                </div>
-                <div>
-                    <button id="resetStatsBtn" class="button btn-calibration btn-stat" onclick="resetStatistics()">
+            
+                <div class="pump-stat">
+                    <button id="resetStatsBtn" class="button btn-calibration" onclick="resetStatistics()">
                         Reset Statistics
                     </button>
+                    <div class="stats-reset">
+                        Last Reset: <span id="resetTime">Loading...</span>
+                    </div>
                 </div>
+            
+                <div class="pump-stat">
+                    <button id="resetStatsBtn" class="button btn-calibration" onclick="resetStatistics()">
+                        Reset Daily Volume
+                    </button>
+                    <div class="stats-info">
+                    </div>
+                </div>
+            </div>
 
-                <!-- <div class="stats-display"> -->
-                <div class="stats-reset" id="statsReset">
-                    Last Reset: <span id="resetTime">Loading...</span>
-                </div>
-                <!-- </div> -->
-            </div>     
+
+
+
+
+
         </div>
         
         <div class="card">
@@ -350,7 +455,7 @@ const char* DASHBOARD_HTML = R"rawliteral(
                 <form class="pump-setting-form" id="volumeForm" onsubmit="updateVolumePerSecond(event)">
                     <div class="pump-setting-form">
                         <label for="volumePerSecond">Volume per Second (ml):</label>
-                        <input type="number" id="volumePerSecond" name="volumePerSecond" min="0.1" max="20.0" step="0.1" value="1.0" required placeholder="Loading...">
+                        <input type="number" id="volumePerSecond" name="volumePerSecond" min="1.0" max="50.0" step="0.1" value="1.0" required placeholder="Loading...">
                         <button type="submit">Update Setting</button>
                         <span id="volumeStatus" style="font-size: 12px; color: #666;"></span>
                     </div>
@@ -397,37 +502,7 @@ const char* DASHBOARD_HTML = R"rawliteral(
                     updateStatus();
                 });
         }
-        // function triggerNormalPump() {
-        //     const btn = document.getElementById('normalBtn');
-        //     btn.disabled = true;
-        //     btn.textContent = 'Starting...';
 
-        //     fetch('/api/pump/normal', { method: 'POST' })
-        //         .then(response => response.json())
-        //         .then(data => {
-        //             if (data.success) {
-        //                 showNotification(`Pump started for ${data.duration}s (${data.volume_ml}ml)`, 'success');
-
-        //                 // ✅ NEW: Refresh statistics after pump completes
-        //                 setTimeout(() => {
-        //                     loadStatistics();
-        //                 }, (data.duration + 8) * 1000); // Load 8s after pump stops (during LOGGING_TIME)
-
-        //             } else {
-        //                 showNotification('Failed to start pump', 'error');
-        //             }
-        //         })
-        //         .catch(() => showNotification('Connection error', 'error'))
-        //         .finally(() => {
-        //             btn.disabled = false;
-        //             btn.textContent = 'Normal Cycle';
-        //             updateStatus();
-        //         });
-        // }
-
-
-
-        
         function triggerExtendedPump() {
             const btn = document.getElementById('extendedBtn');
             btn.disabled = true;
@@ -449,34 +524,7 @@ const char* DASHBOARD_HTML = R"rawliteral(
                     updateStatus();
                 });
         }
-        // function triggerExtendedPump() {
-        //     const btn = document.getElementById('extendedBtn');
-        //     btn.disabled = true;
-        //     btn.textContent = 'Starting...';
-            
-        //     fetch('/api/pump/extended', { method: 'POST' })
-        //         .then(response => response.json())
-        //         .then(data => {
-        //             if (data.success) {
-        //                 showNotification(`Extended pump started for ${data.duration}s`, 'success');
-                        
-        //                 // ✅ NEW: Refresh statistics after pump completes  
-        //                 setTimeout(() => {
-        //                     loadStatistics();
-        //                 }, (data.duration + 8) * 1000); // Load 8s after pump stops (during LOGGING_TIME)
-                        
-        //             } else {
-        //                 showNotification('Failed to start pump', 'error');
-        //             }
-        //         })
-        //         .catch(() => showNotification('Connection error', 'error'))
-        //         .finally(() => {
-        //             btn.disabled = false;
-        //             btn.textContent = 'Extended Cycle';
-        //             updateStatus();
-        //         });
-        // }
-        
+
         function stopPump() {
             const btn = document.getElementById('stopBtn');
             btn.disabled = true;
