@@ -12,123 +12,7 @@
 
 WaterAlgorithm waterAlgorithm;
 
-// WaterAlgorithm::WaterAlgorithm() {
-//     currentState = STATE_IDLE;
-//     resetCycle();
-//     dayStartTime = millis();
-//     dailyVolumeML = 0;
-//     resetPending = false;
-    
-//     // CRITICAL: Initialize lastResetDate with safe default FIRST
-//     strcpy(lastResetDate, "2025-10-06");  // Safe fallback
-//     lastResetDate[11] = '\0';
-    
-//     lastError = ERROR_NONE;
-//     errorSignalActive = false;
-//     lastSensor1State = false;
-//     lastSensor2State = false;
-//     todayCycles.clear();
 
-//     framDataLoaded = false;
-//     lastFRAMCleanup = millis();
-//     framCycles.clear();
-
-//     LOG_INFO("====================================");
-//     LOG_INFO("STARTUP - DAILY VOLUME INIT");
-//     LOG_INFO("====================================");
-    
-//     // Check RTC health FIRST
-//     String currentTimestamp = getCurrentTimestamp();
-//     LOG_INFO("RTC timestamp: %s", currentTimestamp.c_str());
-//     LOG_INFO("RTC info: %s", getRTCInfo().c_str());
-    
-//     // Validate RTC timestamp
-//     if (currentTimestamp.length() < 10) {
-//         LOG_ERROR("Invalid RTC timestamp at startup! Length: %d", currentTimestamp.length());
-//         LOG_ERROR("Using fallback date: %s", lastResetDate);
-//         // Keep fallback date "2025-10-06"
-//     } else {
-//         String currentDateStr = currentTimestamp.substring(0, 10);
-//         int year = currentDateStr.substring(0, 4).toInt();
-        
-//         LOG_INFO("Validating RTC date:");
-//         LOG_INFO("  Date string: %s", currentDateStr.c_str());
-//         LOG_INFO("  Year: %d", year);
-        
-//         if (year < 2024 || year > 2030) {
-//             LOG_ERROR("RTC year out of range: %d", year);
-//             LOG_ERROR("Using fallback date: %s", lastResetDate);
-//             // Keep fallback date "2025-10-06"
-//         } else {
-//             // RTC is valid - try to load from FRAM
-//             LOG_INFO("RTC validated, loading from FRAM...");
-            
-//             char loadedDate[12];
-//             uint16_t loadedVolume = 0;
-            
-//             if (loadDailyVolumeFromFRAM(loadedVolume, loadedDate)) {
-//                 LOG_INFO("FRAM data loaded:");
-//                 LOG_INFO("  Volume: %dml", loadedVolume);
-//                 LOG_INFO("  Date: '%s'", loadedDate);
-                
-//                 // Validate FRAM date
-//                 int framYear = String(loadedDate).substring(0, 4).toInt();
-//                 LOG_INFO("  FRAM year: %d", framYear);
-                
-//                 if (framYear < 2024 || framYear > 2030) {
-//                     LOG_ERROR("FRAM year invalid: %d", framYear);
-//                     LOG_ERROR("Resetting to 0ml with current RTC date");
-//                     dailyVolumeML = 0;
-//                     strncpy(lastResetDate, currentDateStr.c_str(), 11);
-//                     lastResetDate[11] = '\0';
-//                     saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
-//                 } else if (currentDateStr == String(loadedDate)) {
-//                     // Same day - restore volume
-//                     dailyVolumeML = loadedVolume;
-//                     strncpy(lastResetDate, loadedDate, 11);
-//                     lastResetDate[11] = '\0';
-//                     LOG_INFO("Same day - restored: %dml", dailyVolumeML);
-//                 } else {
-//                     // Different day - reset
-//                     LOG_INFO("Different day detected:");
-//                     LOG_INFO("  FRAM: %s", loadedDate);
-//                     LOG_INFO("  RTC:  %s", currentDateStr.c_str());
-//                     dailyVolumeML = 0;
-//                     strncpy(lastResetDate, currentDateStr.c_str(), 11);
-//                     lastResetDate[11] = '\0';
-//                     saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
-//                     LOG_INFO("New day - reset to 0ml");
-//                 }
-//             } else {
-//                 // No FRAM data - initialize
-//                 LOG_WARNING("No valid FRAM data - initializing");
-//                 dailyVolumeML = 0;
-//                 strncpy(lastResetDate, currentDateStr.c_str(), 11);
-//                 lastResetDate[11] = '\0';
-//                 saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
-//                 LOG_INFO("Initialized to 0ml");
-//             }
-//         }
-//     }
-    
-//     LOG_INFO("INIT COMPLETE:");
-//     LOG_INFO("  dailyVolumeML: %dml", dailyVolumeML);
-//     LOG_INFO("  lastResetDate: '%s' (len=%d)", lastResetDate, strlen(lastResetDate));
-//     LOG_INFO("====================================");
-    
-//     loadCyclesFromStorage();
-
-//     ErrorStats stats;
-//     if (loadErrorStatsFromFRAM(stats)) {
-//         LOG_INFO("Error statistics loaded from FRAM");
-//     } else {
-//         LOG_WARNING("Could not load error stats from FRAM");
-//     }
-    
-//     pinMode(ERROR_SIGNAL_PIN, OUTPUT);
-//     digitalWrite(ERROR_SIGNAL_PIN, LOW);
-//     pinMode(RESET_PIN, INPUT_PULLUP);
-// }
 
 WaterAlgorithm::WaterAlgorithm() {
     currentState = STATE_IDLE;
@@ -187,161 +71,9 @@ void WaterAlgorithm::resetCycle() {
     waterFailDetected = false;
 }
 
-
-
-// void WaterAlgorithm::update() {
-//     // ... existing error check ...
-    
-//     // Get current RTC timestamp
-//     String fullTimestamp = getCurrentTimestamp();
-//     String currentDateStr = fullTimestamp.substring(0, 10);
-//     int year = currentDateStr.substring(0, 4).toInt();
-
-//     if (fullTimestamp == "RTC_ERROR" || 
-//         fullTimestamp == "RTC_NOT_INITIALIZED" ||
-//         fullTimestamp.length() < 10) {
-//         static uint32_t lastRTCError = 0;
-//         if (millis() - lastRTCError > 30000) {
-//             LOG_ERROR("Skipping date check - RTC error: '%s'", fullTimestamp.c_str());
-//             lastRTCError = millis();
-//         }
-        
-//         // Continue with rest of update (skip date reset logic)
-//         goto skip_date_check;
-//     }
-
-//     if (currentDateStr.length() != 10 || 
-//         currentDateStr[4] != '-' || 
-//         currentDateStr[7] != '-') {
-//         static uint32_t lastFormatWarning = 0;
-//         if (millis() - lastFormatWarning > 30000) {
-//             LOG_ERROR("Invalid date format: '%s'", currentDateStr.c_str());
-//             lastFormatWarning = millis();
-//         }
-//         goto skip_date_check;  // Skip date check
-//     }
-//     // Validate year
-  
-//     if (year < 2024 || year > 2030) {
-//         static uint32_t lastYearWarning = 0;
-//         if (millis() - lastYearWarning > 30000) {
-//             LOG_ERROR("Year out of valid range: %d (from date: %s)", 
-//                       year, currentDateStr.c_str());
-//             LOG_ERROR("Full timestamp: %s", fullTimestamp.c_str());
-//             LOG_ERROR("RTC Info: %s", getRTCInfo().c_str());
-//             lastYearWarning = millis();
-//         }
-//         goto skip_date_check;  // Skip date check
-//     }
-    
-//     // CRITICAL: Check if lastResetDate is corrupted
-//     if (strlen(lastResetDate) != 10 || 
-//         lastResetDate[4] != '-' || 
-//         lastResetDate[7] != '-') {
-//         LOG_ERROR("lastResetDate corrupted: '%s' (len=%d)", 
-//                   lastResetDate, strlen(lastResetDate));
-//         LOG_ERROR("Reinitializing with current RTC date");
-        
-//         // Reinitialize
-//         strncpy(lastResetDate, currentDateStr.c_str(), 11);
-//         lastResetDate[11] = '\0';
-//         saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
-        
-//         LOG_INFO("lastResetDate reinitialized to: %s", lastResetDate);
-//         goto skip_date_check;
-//     }
-    
-//     // Log comparison periodically
-//     static uint32_t lastComparisonLog = 0;
-//     static String lastLoggedDate = "";
-    
-//     if (millis() - lastComparisonLog > 60000 || 
-//         currentDateStr != lastLoggedDate) {
-//         LOG_INFO("DATE CHECK: current='%s' vs last='%s' (match=%s)", 
-//                  currentDateStr.c_str(), 
-//                  lastResetDate,
-//                  (currentDateStr == String(lastResetDate)) ? "YES" : "NO");
-//         lastComparisonLog = millis();
-//         lastLoggedDate = currentDateStr;
-//     }
-
-//     if (currentDateStr != String(lastResetDate)) {
-//         // Parse dates to compare
-//         int lastYear = String(lastResetDate).substring(0, 4).toInt();
-//         int lastMonth = String(lastResetDate).substring(5, 7).toInt();
-//         int lastDay = String(lastResetDate).substring(8, 10).toInt();
-        
-//         int currYear = currentDateStr.substring(0, 4).toInt();
-//         int currMonth = currentDateStr.substring(5, 7).toInt();
-//         int currDay = currentDateStr.substring(8, 10).toInt();
-        
-//         // Calculate which is newer
-//         long lastDate = lastYear * 10000 + lastMonth * 100 + lastDay;
-//         long currDate = currYear * 10000 + currMonth * 100 + currDay;
-        
-//         if (currDate < lastDate) {
-//             // Current date is OLDER than last reset date - this is an error!
-//             LOG_ERROR("===========================================");
-//             LOG_ERROR("DATE REGRESSION DETECTED - IGNORING!");
-//             LOG_ERROR("===========================================");
-//             LOG_ERROR("Last reset date: %s (%ld)", lastResetDate, lastDate);
-//             LOG_ERROR("Current date:    %s (%ld)", currentDateStr.c_str(), currDate);
-//             LOG_ERROR("This indicates RTC error - ignoring reset");
-//             LOG_ERROR("===========================================");
-//             goto skip_date_check;  // Don't reset if date goes backward!
-//         }
-        
-//         // Date moved forward - legitimate reset
-//         LOG_WARNING("===========================================");
-//         LOG_WARNING("DATE CHANGE DETECTED - RESET TRIGGERED!");
-//         LOG_WARNING("===========================================");
-//         LOG_WARNING("Previous date: '%s' (len=%d)", lastResetDate, strlen(lastResetDate));
-//         LOG_WARNING("Current date:  '%s' (len=%d)", currentDateStr.c_str(), currentDateStr.length());
-//         LOG_WARNING("Full timestamp: %s", fullTimestamp.c_str());
-//         LOG_WARNING("RTC Info: %s", getRTCInfo().c_str());
-//         LOG_WARNING("Year validated: %d (2024-2030)", year);
-//         LOG_WARNING("Daily volume BEFORE reset: %dml", dailyVolumeML);
-//         LOG_WARNING("===========================================");
-        
-//         if (isPumpActive()) {
-//             if (!resetPending) {
-//                 LOG_INFO("Reset delayed - pump active");
-//                 resetPending = true;
-//             }
-//         } else {
-//             // dailyVolumeML = 0;
-//             todayCycles.clear();
-//             strncpy(lastResetDate, currentDateStr.c_str(), 11);
-//             lastResetDate[11] = '\0';
-//             saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
-//             resetPending = false;
-            
-//             LOG_WARNING("RESET EXECUTED: dailyVolumeML = 0ml, new date = %s", lastResetDate);
-//             LOG_WARNING("===========================================");
-//         }
-//     }
-    
-//     // Execute delayed reset when pump finishes
-//     if (resetPending && !isPumpActive() && currentState == STATE_IDLE) {
-//         LOG_INFO("Executing delayed reset (pump finished)");
-        
-//         String currentDateStr = getCurrentTimestamp().substring(0, 10);
-//         dailyVolumeML = 0;
-//         todayCycles.clear();
-//         strncpy(lastResetDate, currentDateStr.c_str(), 11);
-//         lastResetDate[11] = '\0';
-//         saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
-//         resetPending = false;
-        
-//         LOG_INFO("Delayed reset complete: 0ml (date: %s)", lastResetDate);
-//     }
-
-//     skip_date_check:
-//     uint32_t currentTime = getCurrentTimeSeconds();
-//     uint32_t stateElapsed = currentTime - stateStartTime;
-
-
 void WaterAlgorithm::update() {
+    checkResetButton();
+    updateErrorSignal();
 
        static uint32_t lastRecoveryAttempt = 0;
     static bool recoveryAttempted = false;
@@ -542,8 +274,8 @@ void WaterAlgorithm::update() {
             static uint32_t lastStatusLog = 0;
             if (currentTime - lastStatusLog >= 5) {
                 uint32_t timeSincePumpStart = currentTime - pumpStartTime;
-                LOG_INFO("TRYB_2_VERIFY: Waiting for sensors... %ds/%ds (attempt %d/%d)", 
-                        timeSincePumpStart, WATER_TRIGGER_MAX_TIME, pumpAttempts, PUMP_MAX_ATTEMPTS);
+                // LOG_INFO("TRYB_2_VERIFY: Waiting for sensors... %ds/%ds (attempt %d/%d)", 
+                //         timeSincePumpStart, WATER_TRIGGER_MAX_TIME, pumpAttempts, PUMP_MAX_ATTEMPTS);###################################################################
                 lastStatusLog = currentTime;
             }
 
@@ -1220,6 +952,79 @@ void WaterAlgorithm::addManualVolume(uint16_t volumeML) {
         LOG_ERROR("System entering ERROR state - press reset button to clear");
     }
 }
+
+
+// ============================================
+// 🆕 CHECK RESET BUTTON (Pin 8 - Active LOW)
+// Funkcja: TYLKO reset z błędu (resetFromError)
+// ============================================
+
+void WaterAlgorithm::checkResetButton() {
+    static bool lastButtonState = HIGH;           // Poprzedni stan (HIGH = not pressed)
+    static uint32_t lastDebounceTime = 0;         // Czas ostatniej zmiany
+    static bool buttonPressed = false;            // Czy przycisk jest wciśnięty
+    
+    const uint32_t DEBOUNCE_DELAY = 50;           // 50ms debouncing
+    
+    // Read current button state (INPUT_PULLUP, więc LOW = pressed)
+    bool currentButtonState = digitalRead(RESET_PIN);
+    
+    // Sprawdź czy stan się zmienił
+    if (currentButtonState != lastButtonState) {
+        lastDebounceTime = millis();
+    }
+    
+    // Debouncing - sprawdź czy stan jest stabilny przez DEBOUNCE_DELAY
+    if ((millis() - lastDebounceTime) > DEBOUNCE_DELAY) {
+        
+        // Przycisk został naciśnięty (HIGH → LOW)
+        if (currentButtonState == LOW && !buttonPressed) {
+            buttonPressed = true;
+            LOG_INFO("🔘 Reset button pressed");
+        }
+        
+        // Przycisk został zwolniony (LOW → HIGH)
+        else if (currentButtonState == HIGH && buttonPressed) {
+            buttonPressed = false;
+            LOG_INFO("🔘 Reset button released");
+            
+            // Sprawdź czy system jest w stanie błędu
+            if (currentState == STATE_ERROR) {
+                LOG_INFO("====================================");
+                LOG_INFO("✅ RESET FROM ERROR STATE");
+                LOG_INFO("====================================");
+                LOG_INFO("Previous error: %s", 
+                         lastError == ERROR_DAILY_LIMIT ? "ERR1 (Daily Limit)" :
+                         lastError == ERROR_PUMP_FAILURE ? "ERR2 (Pump Failure)" : 
+                         "ERR0 (Both)");
+                
+                // Wywołaj reset z błędu
+                resetFromError();
+                
+                LOG_INFO("System state: %s", getStateString());
+                LOG_INFO("Error signal: CLEARED");
+                LOG_INFO("====================================");
+                
+                // Visual feedback - krótkie mignięcie LED (potwierdzenie)
+                digitalWrite(ERROR_SIGNAL_PIN, HIGH);
+                delay(100);
+                digitalWrite(ERROR_SIGNAL_PIN, LOW);
+                delay(100);
+                digitalWrite(ERROR_SIGNAL_PIN, HIGH);
+                delay(100);
+                digitalWrite(ERROR_SIGNAL_PIN, LOW);
+                
+            } else {
+                LOG_INFO("ℹ️ System not in error state");
+                LOG_INFO("Current state: %s", getStateString());
+                LOG_INFO("Reset button ignored (no error to clear)");
+            }
+        }
+    }
+    
+    lastButtonState = currentButtonState;
+}
+
 
 
 

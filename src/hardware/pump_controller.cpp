@@ -21,8 +21,6 @@ static bool manualPumpActive = false;
 
 void initPumpController() {
 
-    // gpio_reset_pin(GPIO_NUM_2);  //added
-
     pinMode(PUMP_RELAY_PIN, OUTPUT);
     digitalWrite(PUMP_RELAY_PIN, HIGH);
     
