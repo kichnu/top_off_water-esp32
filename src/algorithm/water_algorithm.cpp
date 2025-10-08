@@ -654,7 +654,38 @@ void WaterAlgorithm::logCycleComplete() {
     }
 
     // Calculate volume based on actual pump duration
-    uint16_t actualVolumeML = (uint16_t)(currentCycle.pump_duration * currentPumpSettings.volumePerSecond);
+    // uint16_t actualVolumeML = (uint16_t)(currentCycle.pump_duration * currentPumpSettings.volumePerSecond);
+    // currentCycle.volume_dose = actualVolumeML;
+
+        uint16_t actualVolumeML;
+    
+    if (currentCycle.error_code == ERROR_PUMP_FAILURE) {
+        // All pump attempts failed - NO water delivered
+        actualVolumeML = 0;
+        
+        LOG_ERROR("====================================");
+        LOG_ERROR("PUMP FAILURE - NO WATER DELIVERED");
+        LOG_ERROR("====================================");
+        LOG_ERROR("Total attempts: %d", pumpAttempts);
+        LOG_ERROR("All attempts timed out (no sensor confirmation)");
+        LOG_ERROR("Volume counted: 0ml (no confirmed delivery)");
+        LOG_ERROR("Possible causes:");
+        LOG_ERROR("  - Pump malfunction");
+        LOG_ERROR("  - Tube blockage");
+        LOG_ERROR("  - Water source empty");
+        LOG_ERROR("  - Sensor malfunction");
+        LOG_ERROR("====================================");
+        
+    } else {
+        // Normal cycle - water confirmed by sensors
+        actualVolumeML = (uint16_t)(currentCycle.pump_duration * 
+                                     currentPumpSettings.volumePerSecond);
+        
+        LOG_INFO("Water delivery confirmed by sensors");
+        LOG_INFO("Volume delivered: %dml", actualVolumeML);
+    }
+
+
     currentCycle.volume_dose = actualVolumeML;
     currentCycle.pump_attempts = pumpAttempts;
 
