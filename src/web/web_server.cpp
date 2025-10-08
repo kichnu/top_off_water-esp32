@@ -29,6 +29,9 @@
         server.on("/api/pump-toggle", HTTP_GET | HTTP_POST, handlePumpToggle);
         server.on("/api/reset-statistics", HTTP_POST, handleResetStatistics);
         server.on("/api/get-statistics", HTTP_GET, handleGetStatistics);
+
+        server.on("/api/daily-volume", HTTP_GET, handleGetDailyVolume);
+        server.on("/api/reset-daily-volume", HTTP_POST, handleResetDailyVolume);
         
         // 404 handler
         server.onNotFound([](AsyncWebServerRequest* request) {

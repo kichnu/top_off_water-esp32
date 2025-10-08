@@ -1056,6 +1056,49 @@ void WaterAlgorithm::checkResetButton() {
     lastButtonState = currentButtonState;
 }
 
+bool WaterAlgorithm::resetDailyVolume() {
+    LOG_INFO("====================================");
+    LOG_INFO("MANUAL DAILY VOLUME RESET REQUESTED");
+    LOG_INFO("====================================");
+    LOG_INFO("Previous volume: %dml", dailyVolumeML);
+    LOG_INFO("Current date: %s", lastResetDate);
+    
+    // Check if pump is active
+    if (isPumpActive()) {
+        LOG_WARNING("❌ Reset blocked - pump is active");
+        LOG_WARNING("Please wait for pump cycle to complete");
+        return false;
+    }
+    
+    // Reset volume to 0
+    dailyVolumeML = 0;
+    todayCycles.clear();
+    
+    // Save to FRAM
+    if (!saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate)) {
+        LOG_ERROR("⚠️ Failed to save reset volume to FRAM");
+        return false;
+    }
+    
+    LOG_INFO("✅ Daily volume reset to 0ml");
+    LOG_INFO("Date remains: %s", lastResetDate);
+    LOG_INFO("====================================");
+    
+    // Log to VPS
+    String timestamp = getCurrentTimestamp();
+    // bool vpsSuccess = logEventToVPS("DAILY_VOLUME_RESET", 0, timestamp);
+    bool vpsSuccess = logEventToVPS("STATISTICS_RESET", 0, timestamp);
+
+    
+    if (vpsSuccess) {
+        LOG_INFO("✅ Volume reset + VPS logging: SUCCESS");
+    } else {
+        LOG_WARNING("⚠️ Volume reset: SUCCESS, VPS logging: FAILED (non-critical)");
+    }
+    
+    return true;
+}
+
 
 
 

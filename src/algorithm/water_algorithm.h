@@ -76,6 +76,8 @@ public:
     // 🆕 NEW: Initialize daily volume AFTER RTC is ready
     void initDailyVolume();
 
+    bool resetDailyVolume();
+
     uint32_t getCurrentTimeSeconds() const { return millis() / 1000; }
     
     // Main algorithm update - call this from loop()

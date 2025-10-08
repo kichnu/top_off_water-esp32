@@ -430,10 +430,12 @@ const char* DASHBOARD_HTML = R"rawliteral(
                 </div>
             
                 <div class="pump-stat">
-                    <button id="resetStatsBtn" class="button btn-calibration" onclick="resetStatistics()">
+                    <button id="resetDailyVolumeBtn" class="button btn-calibration" onclick="resetDailyVolume()">
                         Reset Daily Volume
                     </button>
                     <div class="stats-info">
+                        Current: <span id="currentDailyVolume">Loading...</span> ml<br>
+                        <small>Max: <span id="maxDailyVolume">Loading...</span> ml</small>
                     </div>
                 </div>
             </div>
@@ -572,8 +574,8 @@ const char* DASHBOARD_HTML = R"rawliteral(
             const statusSpan = document.getElementById('volumeStatus');
             const volumeValue = parseFloat(volumeInput.value);
             
-            if (volumeValue < 0.1 || volumeValue > 20.0) {
-                statusSpan.textContent = 'Error: Value must be between 0.1-20.0';
+            if (volumeValue < 1 || volumeValue > 50.0) {
+                statusSpan.textContent = 'Error: Value must be between 1-50.0';
                 statusSpan.style.color = '#e74c3c';
                 return;
             }
@@ -811,11 +813,64 @@ const char* DASHBOARD_HTML = R"rawliteral(
             }, 1000);
         }
 
+
+        // Daily Volume Management
+        function loadDailyVolume() {
+            fetch('/api/daily-volume')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('currentDailyVolume').textContent = data.daily_volume;
+                        document.getElementById('maxDailyVolume').textContent = data.max_volume;
+                    }
+                })
+                .catch(error => {
+                    console.error('Failed to load daily volume:', error);
+                });
+        }
+
+        function resetDailyVolume() {
+            const confirmMessage = 'Are you sure you want to reset Daily Volume to 0ml?\n\nCurrent volume will be cleared.\nThis action cannot be undone.';
+            
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+            
+            const btn = document.getElementById('resetDailyVolumeBtn');
+            btn.disabled = true;
+            btn.textContent = 'Resetting...';
+            
+            fetch('/api/reset-daily-volume', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Daily volume reset to 0ml successfully', 'success');
+                        loadDailyVolume(); // Reload immediately
+                    } else {
+                        const errorMsg = data.error || 'Reset failed';
+                        showNotification('Failed to reset: ' + errorMsg, 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Network error', 'error');
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.textContent = 'Reset Daily Volume';
+                });
+        }
+
         // Auto-update pump state every 30 seconds
         setInterval(loadPumpGlobalState, 30000);
 
+        loadDailyVolume();  // 🆕 Load daily volume on page load
+        
+        // Auto-refresh daily volume every 10 seconds
+        setInterval(loadDailyVolume, 10000);
+
         loadVolumePerSecond();
         loadStatistics(); 
+        
     </script>
 </body>
 </html>

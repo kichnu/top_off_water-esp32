@@ -381,5 +381,57 @@ void handleGetStatistics(AsyncWebServerRequest* request) {
     request->send(success ? 200 : 500, "application/json", response);
 }
 
+// ========================================
+// DAILY VOLUME HANDLERS
+// ========================================
+
+void handleGetDailyVolume(AsyncWebServerRequest* request) {
+    String response = "{";
+    response += "\"success\":true,";
+    response += "\"daily_volume\":" + String(waterAlgorithm.getDailyVolume()) + ",";
+    response += "\"max_volume\":" + String(FILL_WATER_MAX) + ",";
+    response += "\"last_reset_date\":\"" + String(waterAlgorithm.getLastResetDate()) + "\"";
+    response += "}";
+    
+    request->send(200, "application/json", response);
+}
+
+void handleResetDailyVolume(AsyncWebServerRequest* request) {
+    IPAddress clientIP = request->client()->remoteIP();
+    
+    // Check authentication
+    if (!checkAuthentication(request)) {
+        LOG_WARNING("Unauthorized daily volume reset attempt from %s", clientIP.toString().c_str());
+        request->send(401, "application/json", "{\"success\":false,\"error\":\"Unauthorized\"}");
+        return;
+    }
+    
+    // Check rate limiting
+    if (isRateLimited(clientIP)) {
+        request->send(429, "application/json", "{\"success\":false,\"error\":\"Too many requests\"}");
+        return;
+    }
+    
+    LOG_INFO("Daily volume reset requested from %s", clientIP.toString().c_str());
+    
+    // Perform reset
+    bool success = waterAlgorithm.resetDailyVolume();
+    
+    if (success) {
+        String response = "{";
+        response += "\"success\":true,";
+        response += "\"daily_volume\":" + String(waterAlgorithm.getDailyVolume()) + ",";
+        response += "\"last_reset_date\":\"" + String(waterAlgorithm.getLastResetDate()) + "\"";
+        response += "}";
+        
+        request->send(200, "application/json", response);
+        LOG_INFO("✅ Daily volume reset successful via web interface");
+    } else {
+        request->send(400, "application/json", 
+                     "{\"success\":false,\"error\":\"Cannot reset while pump is active\"}");
+        LOG_WARNING("⚠️ Daily volume reset blocked - pump is active");
+    }
+}
+
 
 #endif // ENABLE_WEB_SERVER

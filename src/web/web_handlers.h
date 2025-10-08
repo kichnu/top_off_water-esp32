@@ -28,6 +28,9 @@
     // Statistics handlers
     void handleResetStatistics(AsyncWebServerRequest* request);
     void handleGetStatistics(AsyncWebServerRequest* request);
+
+    void handleGetDailyVolume(AsyncWebServerRequest* request);
+    void handleResetDailyVolume(AsyncWebServerRequest* request);
 #endif
 
 #endif
