@@ -132,9 +132,13 @@ const char* DASHBOARD_HTML = R"rawliteral(
             min-height: 100vh;
         }
         .container { max-width: 1000px; margin: 0 auto; }
-        .header { 
-            text-align: center; color: white; margin-bottom: 30px; position: relative;
-        }
+
+
+        // .header { 
+        //     text-align: center; color: white; margin-bottom: 30px; position: relative;
+        // }
+
+
         .header h1 { margin: 0; font-size: 32px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
         .logout-btn { 
             position: absolute; top: 0; right: 0; background: #dc3545; color: white; 
@@ -173,13 +177,12 @@ const char* DASHBOARD_HTML = R"rawliteral(
         .button.danger:hover { background: #c82333; }
         .btn-calibration { background: #dddddd; color: #333; width: 200px;}
         .btn-calibration.btn-stat {width: 150px;}
-
-
-
         .btn-calibration:hover { background: #ccc; }
-        .alert { 
-            padding: 15px; margin: 15px 0; border-radius: 10px; font-weight: bold; 
-        }
+
+
+        // .alert { 
+        //     padding: 15px; margin: 15px 0; border-radius: 10px; font-weight: bold; 
+        // }
 
         /* Statistics Display */
         .stats-display {
@@ -211,7 +214,35 @@ const char* DASHBOARD_HTML = R"rawliteral(
             /* color: #6c757d; */
             /* width: 50%; */
         }
-        
+
+        .header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            color: white;
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .notifications {
+            height: 25px;
+            width: 100%;
+        }
+
+        .alert {
+            background-color: #c77777;
+            display: block;
+            color: white;
+            border-radius: 5px;
+            margin-top: 20px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
         @media (max-width: 600px) {
             .stats-reset {
                 margin-top: 10px;
@@ -221,38 +252,36 @@ const char* DASHBOARD_HTML = R"rawliteral(
                 font-size: 14px;
             }
         }
+
         .alert.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .pump-controls{ 
-             display: flex; flex-wrap: wrap; justify-content:space-around; align-items: center;
+            display: flex; flex-wrap: wrap; justify-content:space-around; align-items: center;
+            }
+            .pump-setting{
+                display: flex; flex-direction: row;
+                
+                }
+                .pump-setting-form{
+            display: flex; align-items: center; justify-content: center; gap: 15px; margin-left: 30px;
         }
-        .pump-setting{
-            display: flex; flex-direction: row;
 
-        }
-        .pump-setting-form{
-             display: flex; align-items: center; justify-content: center; gap: 15px; margin-left: 30px;
-        }
         .pump-setting-form > label{
-             font-weight: bold; font-size: 18px;
+            font-weight: bold; font-size: 18px;
         }
+
         .pump-setting-form > input{
             padding: 8px; font-size: 18px; border: 2px solid #ddd; border-radius: 5px; width: 50px;
         }
+
         .pump-setting-form > button{
-            background: #3498db; color: white; font-size: 18px; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;
-
+        background: #3498db; color: white; font-size: 18px; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;   
         }
-
-
+                
         .rtc-error {
             color: #e74c3c !important;
         }
-
-
-
-
-
+                        
         .pump-stats {
             display: flex;
             flex-wrap: wrap;
@@ -263,7 +292,7 @@ const char* DASHBOARD_HTML = R"rawliteral(
             text-align: center;
             box-sizing: border-box;
         }
-
+            
         .pump-stat {
             background-color: #f7f7f7;
             padding: 0.5rem 1rem;
@@ -271,11 +300,11 @@ const char* DASHBOARD_HTML = R"rawliteral(
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
             min-width: 220px;
             max-width: 260px;
-            min-height: 140px;
+            min-height: 120px;
             flex: 1 1 220px;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-
+            
         .button-stats.btn-stat {
             display: inline-block;
             background-color: #e0e0e0;
@@ -289,16 +318,16 @@ const char* DASHBOARD_HTML = R"rawliteral(
             width: 100%;
             max-width: 200px;
         }
-
+            
         .button-stats.btn-stat:hover {
             background-color: #d5d5d5;
         }
-
+            
         .button-stats.btn-stat:active {
             transform: scale(0.97);
         }
-
-        .stats-values,
+                
+        .stats-val
         .stats-reset,
         .stats-info {
             margin-top: 0.8rem;
@@ -307,15 +336,15 @@ const char* DASHBOARD_HTML = R"rawliteral(
             font-weight: 600;
             line-height: 1.4;
         }
-
+            
         .stats-values span,
         .stats-reset span,
         .stats-info span {
             font-weight: 700;
             color: #000;
         }
-
-        /* Responsywność */
+                
+                /* Responsywność */
         @media (max-width: 800px) {
             .pump-controls {
                 gap: 1.5rem;
@@ -329,75 +358,68 @@ const char* DASHBOARD_HTML = R"rawliteral(
             .pump-control {
                 flex: 1 1 100%;
             }
-        }
-
-
-
-
-
-
-
-
-
-
+                
         @media (max-width: 600px) {
-            .status-grid { grid-template-columns: 1fr; }
-            .pump-controls, .pomp-setting { flex-direction: column; }
-            .button { width: 100%; margin: 5px 0; 
+                .status-grid { grid-template-columns: 1fr; }
+                .pump-controls, .pomp-setting { flex-direction: column; }
+                .button { width: 100%; margin: 5px 0; 
             }
-        }
+            }
     </style>
 </head>
 <body>
-        <div class="container">
+
+    <div class="container">
         <div class="header">
-            <button class="logout-btn" onclick="logout()">Logout</button>
-            <h1> Top Off Water - System</h1>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+        <h1> Top Off Water - System</h1>
+        <div id="notifications" class="notifications">
+        </div>
         </div>
         
         <div class="card">
-            <h2>System Status</h2>
-            <div class="status-grid">
-                <div class="status-item">
-                    <span class="status-label">Water Level:</span>
-                    <span class="status-value" id="waterStatus">Loading...</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Pump Status:</span>
-                    <span class="status-value" id="pumpStatus">Loading...</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">WiFi Status:</span>
-                    <span class="status-value" id="wifiStatus">Loading...</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">RTC Time(UTC):</span>
-                    <span class="status-value" id="rtcTime">Loading...</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Free Memory:</span>
-                    <span class="status-value" id="freeHeap">Loading...</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Uptime:</span>
-                    <span class="status-value" id="uptime">Loading...</span>
-                </div>
-            </div>
+        <h2>System Status</h2>
+        <div class="status-grid">
+        <div class="status-item">
+        <span class="status-label">Water Level:</span>
+        <span class="status-value" id="waterStatus">Loading...</span>
         </div>
-
-
+        <div class="status-item">
+        <span class="status-label">Pump Status:</span>
+        <span class="status-value" id="pumpStatus">Loading...</span>
+        </div>
+        <div class="status-item">
+        <span class="status-label">WiFi Status:</span>
+        <span class="status-value" id="wifiStatus">Loading...</span>
+        </div>
+        <div class="status-item">
+        <span class="status-label">RTC Time(UTC):</span>
+        <span class="status-value" id="rtcTime">Loading...</span>
+        </div>
+        <div class="status-item">
+        <span class="status-label">Free Memory:</span>
+        <span class="status-value" id="freeHeap">Loading...</span>
+        </div>
+        <div class="status-item">
+        <span class="status-label">Uptime:</span>
+        <span class="status-value" id="uptime">Loading...</span>
+        </div>
+        </div>
+        </div>
+        
+        
         <div class="card">
-            <h2>Pump Control</h2>
-            <div class="pump-controls">
-                <button id="normalBtn" class="button" onclick="triggerNormalPump()">
-                    Normal Cycle
-                </button>
-                <button id="stopBtn" class="button danger" onclick="stopPump()">
-                    Stop Pump
-                </button>
-                <button id="onOffBtn" class="button on-off" onclick="togglePumpGlobal()">
-                    Pump ON
-                </button>
+        <h2>Pump Control</h2>
+        <div class="pump-controls">
+        <button id="normalBtn" class="button" onclick="triggerNormalPump()">
+        Normal Cycle
+        </button>
+        <button id="stopBtn" class="button danger" onclick="stopPump()">
+        Stop Pump
+        </button>
+        <button id="onOffBtn" class="button on-off" onclick="togglePumpGlobal()">
+        Pump ON
+        </button>
             
             </div>
             
@@ -416,7 +438,9 @@ const char* DASHBOARD_HTML = R"rawliteral(
                         Load Statistics
                     </button>
                     <div class="stats-values">
-                        Err activate: <span id="gap1Value"></span> Err deactivate: <span id="gap2Value"></span> Err pump: <span id="waterValue"></span>
+                        Err activate: <span id="gap1Value"></span><br>
+                        Err deactivate: <span id="gap2Value"></span><br>
+                        Err pump: <span id="waterValue"></span>
                     </div>
                 </div>
             
@@ -440,11 +464,6 @@ const char* DASHBOARD_HTML = R"rawliteral(
                 </div>
             </div>
 
-
-
-
-
-
         </div>
         
         <div class="card">
@@ -465,7 +484,6 @@ const char* DASHBOARD_HTML = R"rawliteral(
             </div>
         </div>
         
-        <div id="notifications"></div>
     </div>
 
     <script>
