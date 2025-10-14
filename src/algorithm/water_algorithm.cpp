@@ -677,7 +677,7 @@ void WaterAlgorithm::logCycleComplete() {
         LOG_ERROR("====================================");
         
     } else {
-        // Normal cycle - water confirmed by sensors
+        // Manual cycle - water confirmed by sensors
         actualVolumeML = (uint16_t)(currentCycle.pump_duration * 
                                      currentPumpSettings.volumePerSecond);
         

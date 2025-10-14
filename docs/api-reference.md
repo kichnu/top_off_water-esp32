@@ -110,7 +110,7 @@ POST /api/pump/normal
 ```
 
 **Calculated Fields:**
-- `duration`: From `currentPumpSettings.normalCycleSeconds`
+- `duration`: From `currentPumpSettings.manualCycleSeconds`
 - `volume_ml`: `duration * currentPumpSettings.volumePerSecond`
 
 ### Start Extended Pump Cycle (Calibration)

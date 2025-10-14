@@ -35,8 +35,8 @@ const int MAX_FAILED_ATTEMPTS = 10;
 const unsigned long BLOCK_DURATION_MS = 60000;
 
 struct PumpSettings {
-    uint16_t normalCycleSeconds = 4;
-    uint16_t extendedCycleSeconds = 30;
+    uint16_t manualCycleSeconds = 10;
+    uint16_t calibrationCycleSeconds = 30;
     float volumePerSecond = 1.0;
     bool autoModeEnabled = true;
 };

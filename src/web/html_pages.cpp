@@ -412,7 +412,7 @@ const char* DASHBOARD_HTML = R"rawliteral(
         <h2>Pump Control</h2>
         <div class="pump-controls">
         <button id="normalBtn" class="button" onclick="triggerNormalPump()">
-        Normal Cycle
+        Manual Cycle
         </button>
         <button id="stopBtn" class="button danger" onclick="stopPump()">
         Stop Pump
@@ -518,7 +518,7 @@ const char* DASHBOARD_HTML = R"rawliteral(
                 .catch(() => showNotification('Connection error', 'error'))
                 .finally(() => {
                     btn.disabled = false;
-                    btn.textContent = 'Normal Cycle';
+                    btn.textContent = 'Manual Cycle';
                     updateStatus();
                 });
         }

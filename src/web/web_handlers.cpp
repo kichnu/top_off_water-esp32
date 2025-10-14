@@ -169,12 +169,12 @@ void handlePumpNormal(AsyncWebServerRequest* request) {
         return;
     }
     
-    bool success = triggerPump(currentPumpSettings.normalCycleSeconds, "MANUAL_NORMAL");
+    bool success = triggerPump(currentPumpSettings.manualCycleSeconds, "MANUAL_NORMAL");
     
     JsonDocument json;
     json["success"] = success;
-    json["duration"] = currentPumpSettings.normalCycleSeconds;
-    json["volume_ml"] = currentPumpSettings.normalCycleSeconds * currentPumpSettings.volumePerSecond;
+    json["duration"] = currentPumpSettings.manualCycleSeconds;
+    json["volume_ml"] = currentPumpSettings.manualCycleSeconds * currentPumpSettings.volumePerSecond;
     
     String response;
     serializeJson(json, response);
@@ -189,11 +189,11 @@ void handlePumpExtended(AsyncWebServerRequest* request) {
         return;
     }
     
-    bool success = triggerPump(currentPumpSettings.extendedCycleSeconds, "MANUAL_EXTENDED");
+    bool success = triggerPump(currentPumpSettings.calibrationCycleSeconds, "MANUAL_EXTENDED");
     
     JsonDocument json;
     json["success"] = success;
-    json["duration"] = currentPumpSettings.extendedCycleSeconds;
+    json["duration"] = currentPumpSettings.calibrationCycleSeconds;
     json["type"] = "extended";
     
     String response;
@@ -233,8 +233,8 @@ void handlePumpSettings(AsyncWebServerRequest* request) {
         JsonDocument json;
         json["success"] = true;
         json["volume_per_second"] = currentPumpSettings.volumePerSecond;
-        json["normal_cycle"] = currentPumpSettings.normalCycleSeconds;
-        json["extended_cycle"] = currentPumpSettings.extendedCycleSeconds;
+        json["normal_cycle"] = currentPumpSettings.manualCycleSeconds;
+        json["extended_cycle"] = currentPumpSettings.calibrationCycleSeconds;
         json["auto_mode"] = currentPumpSettings.autoModeEnabled;
         
         String response;

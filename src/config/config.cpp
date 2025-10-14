@@ -31,7 +31,7 @@ const char* DEVICE_ID = "UNCONFIGURED_DEVICE";
 // Global pump control
 bool pumpGlobalEnabled = true;  // Default ON
 unsigned long pumpDisabledTime = 0;
-const unsigned long PUMP_AUTO_ENABLE_MS = 3 * 60 * 1000; // 30 minutes
+const unsigned long PUMP_AUTO_ENABLE_MS = 30 * 60 * 1000; // 30 minutes
 
 PumpSettings currentPumpSettings;
 

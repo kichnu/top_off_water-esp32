@@ -311,7 +311,7 @@ Located in `src/algorithm/algorithm_config.h`:
 ### Pump Settings
 Configurable via web interface:
 - **Volume per Second**: 0.1 - 20.0 ml/s
-- **Normal Cycle Duration**: Default 15 seconds
+- **Extended Cycle Duration**: Default 15 seconds
 - **Extended Cycle Duration**: Default 30 seconds (calibration)
 
 ## 📊 Security Model

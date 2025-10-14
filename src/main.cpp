@@ -234,7 +234,7 @@ void loop() {
         // Check for auto pump trigger
         if (currentPumpSettings.autoModeEnabled && shouldActivatePump() && !isPumpActive()) {
             Serial.println("Auto pump triggered - water level low");
-            triggerPump(currentPumpSettings.normalCycleSeconds, "AUTO_PUMP");
+            triggerPump(currentPumpSettings.manualCycleSeconds, "AUTO_PUMP");
         }
         
         lastUpdate = now;
