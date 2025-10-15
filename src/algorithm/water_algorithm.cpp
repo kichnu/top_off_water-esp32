@@ -8,7 +8,7 @@
 #include "../hardware/fram_controller.h"  
 #include "../network/vps_logger.h"
 #include "../hardware/rtc_controller.h" 
-#include "../hardware/time_cache.h" 
+
 
 WaterAlgorithm waterAlgorithm;
 
@@ -19,10 +19,8 @@ WaterAlgorithm::WaterAlgorithm() {
     resetCycle();
     dayStartTime = millis();
     
-    // 🆕 MINIMAL INIT - bez odczytu RTC!
     dailyVolumeML = 0;
-    strcpy(lastResetDate, "2025-01-01");  // Safe placeholder
-    lastResetDate[11] = '\0';
+    lastResetUTCDay = 0;  // ← ZMIANA
     resetPending = false;
     
     lastError = ERROR_NONE;
@@ -34,9 +32,6 @@ WaterAlgorithm::WaterAlgorithm() {
     framDataLoaded = false;
     lastFRAMCleanup = millis();
     framCycles.clear();
-
-    // ❌ USUNIĘTO całą logikę inicjalizacji daily volume
-    // Przeniesiona do initDailyVolume()
     
     loadCyclesFromStorage();
 
@@ -74,111 +69,58 @@ void WaterAlgorithm::resetCycle() {
 void WaterAlgorithm::update() {
     checkResetButton();
     updateErrorSignal();
-
-       static uint32_t lastRecoveryAttempt = 0;
-    static bool recoveryAttempted = false;
     
-    if (!globalTimeCache.isValid && !recoveryAttempted && millis() > 10000) {
-        // Cache invalid po 10 sekundach - spróbuj recovery
-        if (millis() - lastRecoveryAttempt > 30000) {  // Max 1x per 30s
-            LOG_WARNING("Time cache invalid - attempting recovery...");
-            updateTimeCache();  // Spróbuj ponownie
-            lastRecoveryAttempt = millis();
-            
-            if (globalTimeCache.isValid) {
-                LOG_INFO("✅ Time cache recovered successfully!");
-                // Ponownie zainicjalizuj daily volume z prawidłową datą
-                LOG_INFO("Re-initializing daily volume with valid date...");
-                initDailyVolume();
-                recoveryAttempted = true;  // Nie próbuj więcej
-            } else {
-                LOG_ERROR("❌ Time cache recovery failed - will retry in 30s");
-            }
-        }
-    }
-    // 🆕 P3: THROTTLING - sprawdzaj datę max 1x/sekundę
+    // UTC day check - throttled to 1x/second
     static uint32_t lastDateCheck = 0;
-    uint32_t currentTime = getCurrentTimeSeconds();
     
-    // Date check throttling
-    if (millis() - lastDateCheck >= 1000) {  // Max 1x per second
+    if (millis() - lastDateCheck >= 1000) {
+        // uint32_t currentTime = getCurrentTimeSeconds();
         lastDateCheck = millis();
         
-        // 🆕 P2: Użyj CACHE zamiast getCurrentTimestamp()
-        const char* currentDate = getCachedDate();  // ← O(1), BEZ I2C!
-        
-        // Validate cache
-        if (!globalTimeCache.isValid) {
+        if (!isRTCWorking()) {
             static uint32_t lastWarning = 0;
             if (millis() - lastWarning > 30000) {
-                LOG_ERROR("Time cache invalid - skipping date check");
-                LOG_ERROR("Recovery will be attempted automatically");
+                LOG_ERROR("RTC not working - skipping date check");
                 lastWarning = millis();
             }
             goto skip_date_check;
         }
         
-        // Validate date format
-        if (strlen(currentDate) != 10 || currentDate[4] != '-' || currentDate[7] != '-') {
-            static uint32_t lastFormatWarning = 0;
-            if (millis() - lastFormatWarning > 30000) {
-                LOG_ERROR("Invalid date format in cache: '%s'", currentDate);
-                lastFormatWarning = millis();
+        uint32_t currentUTCDay = getUnixTimestamp() / 86400;
+        
+        // ✅ SANITY CHECK: Sprawdź czy UTC day jest sensowny (2024-2035)
+        // 2024-01-01 = 19723 days, 2035-12-31 = 24106 days
+        if (currentUTCDay < 19723 || currentUTCDay > 24106) {
+            static uint32_t lastInvalidWarning = 0;
+            if (millis() - lastInvalidWarning > 10000) {
+                LOG_ERROR("Invalid UTC day from RTC: %lu (expected 19723-24106)", currentUTCDay);
+                LOG_ERROR("Skipping date check - RTC data corrupted");
+                lastInvalidWarning = millis();
             }
             goto skip_date_check;
         }
         
-        // Validate year
-        int year = String(currentDate).substring(0, 4).toInt();
-        if (year < 2024 || year > 2030) {
-            static uint32_t lastYearWarning = 0;
-            if (millis() - lastYearWarning > 30000) {
-                LOG_ERROR("Year out of range in cache: %d", year);
-                lastYearWarning = millis();
-            }
-            goto skip_date_check;
-        }
-        
-        // Validate lastResetDate
-        if (strlen(lastResetDate) != 10 || lastResetDate[4] != '-' || lastResetDate[7] != '-') {
-            LOG_ERROR("lastResetDate corrupted: '%s' (len=%d)", 
-                      lastResetDate, strlen(lastResetDate));
-            LOG_ERROR("Reinitializing with current date");
-            
-            strncpy(lastResetDate, currentDate, 11);
-            lastResetDate[11] = '\0';
-            saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
-            goto skip_date_check;
-        }
-        
-        // Check if date changed
-        if (strcmp(currentDate, lastResetDate) != 0) {
-            // Parse dates
-            int lastYear = String(lastResetDate).substring(0, 4).toInt();
-            int lastMonth = String(lastResetDate).substring(5, 7).toInt();
-            int lastDay = String(lastResetDate).substring(8, 10).toInt();
-            
-            int currYear = year;
-            int currMonth = String(currentDate).substring(5, 7).toInt();
-            int currDay = String(currentDate).substring(8, 10).toInt();
-            
-            long lastDate = lastYear * 10000 + lastMonth * 100 + lastDay;
-            long currDate = currYear * 10000 + currMonth * 100 + currDay;
-            
-            if (currDate < lastDate) {
-                // Date regression - RTC error
+        // ✅ DATE REGRESSION PROTECTION: Jeśli nowy < stary, ignoruj (RTC error)
+        if (currentUTCDay < lastResetUTCDay) {
+            static uint32_t lastRegressionWarning = 0;
+            if (millis() - lastRegressionWarning > 10000) {
                 LOG_ERROR("DATE REGRESSION DETECTED - IGNORING!");
-                LOG_ERROR("Last: %s (%ld), Current: %s (%ld)", 
-                          lastResetDate, lastDate, currentDate, currDate);
-                goto skip_date_check;
+                LOG_ERROR("Current UTC day: %lu, Last: %lu (diff: %ld days BACK)", 
+                         currentUTCDay, lastResetUTCDay, 
+                         (long)(lastResetUTCDay - currentUTCDay));
+                LOG_ERROR("This indicates RTC read error - skipping reset");
+                lastRegressionWarning = millis();
             }
-            
-            // Legitimate date change
+            goto skip_date_check;
+        }
+        
+        if (currentUTCDay != lastResetUTCDay) {
             LOG_WARNING("===========================================");
-            LOG_WARNING("DATE CHANGE DETECTED - RESET TRIGGERED!");
+            LOG_WARNING("UTC DAY CHANGE DETECTED - RESET TRIGGERED!");
             LOG_WARNING("===========================================");
-            LOG_WARNING("Previous: '%s'", lastResetDate);
-            LOG_WARNING("Current:  '%s'", currentDate);
+            LOG_WARNING("Previous UTC day: %lu", lastResetUTCDay);
+            LOG_WARNING("Current UTC day:  %lu", currentUTCDay);
+            LOG_WARNING("Difference: +%lu days", currentUTCDay - lastResetUTCDay);
             LOG_WARNING("Daily volume BEFORE: %dml", dailyVolumeML);
             LOG_WARNING("===========================================");
             
@@ -188,41 +130,41 @@ void WaterAlgorithm::update() {
                     resetPending = true;
                 }
             } else {
+                dailyVolumeML = 0;
                 todayCycles.clear();
-                strncpy(lastResetDate, currentDate, 11);
-                lastResetDate[11] = '\0';
-                saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
+                lastResetUTCDay = currentUTCDay;
+                saveDailyVolumeToFRAM(dailyVolumeML, lastResetUTCDay);
                 resetPending = false;
                 
-                LOG_WARNING("RESET EXECUTED: new date = %s", lastResetDate);
+                LOG_WARNING("RESET EXECUTED: new UTC day = %lu", lastResetUTCDay);
                 LOG_WARNING("===========================================");
             }
         }
     }
-    
+       
     skip_date_check:
+    uint32_t currentTime = getCurrentTimeSeconds();
     
     // Execute delayed reset when pump finishes
     if (resetPending && !isPumpActive() && currentState == STATE_IDLE) {
         LOG_INFO("Executing delayed reset (pump finished)");
         
-        const char* currentDate = getCachedDate();
+        uint32_t currentUTCDay = getUnixTimestamp() / 86400;
         dailyVolumeML = 0;
         todayCycles.clear();
-        strncpy(lastResetDate, currentDate, 11);
-        lastResetDate[11] = '\0';
-        saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
+        lastResetUTCDay = currentUTCDay;
+        saveDailyVolumeToFRAM(dailyVolumeML, lastResetUTCDay);
         resetPending = false;
         
-        LOG_INFO("Delayed reset complete: 0ml (date: %s)", lastResetDate);
+        LOG_INFO("Delayed reset complete: 0ml (UTC day: %lu)", lastResetUTCDay);
     }
     
     uint32_t stateElapsed = currentTime - stateStartTime;
 
+    // RESZTA FUNKCJI BEZ ZMIAN (switch statement itd.)
     switch (currentState) {
         case STATE_IDLE:
             break;
-
         case STATE_TRYB_1_WAIT:
             if (stateElapsed >= TIME_GAP_1_MAX) {
                 currentCycle.time_gap_1 = TIME_GAP_1_MAX;
@@ -391,107 +333,57 @@ void WaterAlgorithm::update() {
             break;
     }
 }
+   
 
 void WaterAlgorithm::initDailyVolume() {
     LOG_INFO("====================================");
     LOG_INFO("INITIALIZING DAILY VOLUME");
     LOG_INFO("====================================");
     
-    // ✅ Teraz RTC i cache są już zainicjalizowane!
-    const char* currentDate = getCachedDate();  // ← O(1), bez I2C!
-    
-    LOG_INFO("Current date from cache: %s", currentDate);
-    LOG_INFO("Cache valid: %s", globalTimeCache.isValid ? "YES" : "NO");
-    LOG_INFO("RTC info: %s", getRTCInfo().c_str());
-    
-    // 🆕 CRITICAL: Jeśli cache invalid, NIE zapisuj do FRAM!
-    if (!globalTimeCache.isValid) {
-        LOG_ERROR("====================================");
-        LOG_ERROR("⚠️ Time cache INVALID at initDailyVolume!");
-        LOG_ERROR("====================================");
-        LOG_ERROR("Cannot initialize daily volume without valid RTC");
-        LOG_ERROR("Using temporary fallback - will retry automatically");
+    if (!isRTCWorking()) {
+        LOG_ERROR("RTC not working at initDailyVolume!");
+        dailyVolumeML = 0;
+        lastResetUTCDay = 0;
         LOG_ERROR("Daily volume tracking SUSPENDED until RTC ready");
-        LOG_ERROR("====================================");
-        
-        // Użyj fallback ALE NIE ZAPISUJ DO FRAM
-        dailyVolumeML = 0;
-        strcpy(lastResetDate, "2025-01-01");
-        
-        // ❌ NIE ZAPISUJ: saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
-        
-        LOG_WARNING("Fallback date: %s (NOT saved to FRAM)", lastResetDate);
-        LOG_WARNING("System will auto-recover when RTC becomes available");
         return;
     }
     
-    // Cache is VALID - proceed normally
-    LOG_INFO("✅ Cache is valid, proceeding with initialization");
-    
-    // Validate date format
-    if (strlen(currentDate) != 10 || currentDate[4] != '-' || currentDate[7] != '-') {
-        LOG_ERROR("Invalid date format in cache: '%s'", currentDate);
-        dailyVolumeML = 0;
-        strcpy(lastResetDate, currentDate);
-        // Zapisz tylko jeśli format jest zły ale cache valid
-        saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
-        return;
-    }
-    
-    // Validate year
-    int year = String(currentDate).substring(0, 4).toInt();
-    if (year < 2024 || year > 2030) {
-        LOG_ERROR("Invalid year from cache: %d", year);
-        dailyVolumeML = 0;
-        strcpy(lastResetDate, currentDate);
-        saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
-        return;
-    }
+    uint32_t currentUTCDay = getUnixTimestamp() / 86400;
+    LOG_INFO("Current UTC day: %lu", currentUTCDay);
     
     // Load from FRAM
-    char loadedDate[12];
+    uint32_t loadedUTCDay = 0;
     uint16_t loadedVolume = 0;
     
-    if (loadDailyVolumeFromFRAM(loadedVolume, loadedDate)) {
-        LOG_INFO("FRAM data: %dml, date='%s'", loadedVolume, loadedDate);
-        LOG_INFO("Current date: '%s'", currentDate);
+    if (loadDailyVolumeFromFRAM(loadedVolume, loadedUTCDay)) {
+        LOG_INFO("FRAM data: %dml, UTC day=%lu", loadedVolume, loadedUTCDay);
+        LOG_INFO("Current UTC day: %lu", currentUTCDay);
         
-        // Validate FRAM year
-        int framYear = String(loadedDate).substring(0, 4).toInt();
-        if (framYear < 2024 || framYear > 2030) {
-            LOG_WARNING("Invalid FRAM year: %d - resetting", framYear);
-            dailyVolumeML = 0;
-            strncpy(lastResetDate, currentDate, 11);
-            lastResetDate[11] = '\0';
-            saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
-        } else if (strcmp(currentDate, loadedDate) == 0) {
+        if (currentUTCDay == loadedUTCDay) {
             // Same day - restore volume
             dailyVolumeML = loadedVolume;
-            strncpy(lastResetDate, loadedDate, 11);
-            lastResetDate[11] = '\0';
+            lastResetUTCDay = loadedUTCDay;
             LOG_INFO("✅ Same day - restored: %dml", dailyVolumeML);
         } else {
             // Different day - reset
-            LOG_INFO("🔄 Date changed from '%s' to '%s'", loadedDate, currentDate);
+            LOG_INFO("🔄 Day changed from %lu to %lu", loadedUTCDay, currentUTCDay);
             dailyVolumeML = 0;
-            strncpy(lastResetDate, currentDate, 11);
-            lastResetDate[11] = '\0';
-            saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
+            lastResetUTCDay = currentUTCDay;
+            saveDailyVolumeToFRAM(dailyVolumeML, lastResetUTCDay);
             LOG_INFO("✅ New day - reset to 0ml");
         }
     } else {
         // No valid data in FRAM
         LOG_INFO("No valid FRAM data - initializing");
         dailyVolumeML = 0;
-        strncpy(lastResetDate, currentDate, 11);
-        lastResetDate[11] = '\0';
-        saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate);
+        lastResetUTCDay = currentUTCDay;
+        saveDailyVolumeToFRAM(dailyVolumeML, lastResetUTCDay);
         LOG_INFO("✅ Initialized to 0ml");
     }
     
     LOG_INFO("INIT COMPLETE:");
     LOG_INFO("  dailyVolumeML: %dml", dailyVolumeML);
-    LOG_INFO("  lastResetDate: '%s'", lastResetDate);
+    LOG_INFO("  lastResetUTCDay: %lu", lastResetUTCDay);
     LOG_INFO("====================================");
 }
 
@@ -698,7 +590,7 @@ void WaterAlgorithm::logCycleComplete() {
     // Add to daily volume (use actual volume, not fixed SINGLE_DOSE_VOLUME)
     dailyVolumeML += actualVolumeML;
 
-    if (!saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate)) {
+    if (!saveDailyVolumeToFRAM(dailyVolumeML, lastResetUTCDay)) {
         LOG_WARNING("⚠️ Failed to save daily volume to FRAM");
     }
     
@@ -727,10 +619,10 @@ void WaterAlgorithm::logCycleComplete() {
         }
     }
     
-    // ✅ FIX KOMPILACJI: Użyj getCachedUnixTime() zamiast getCurrentTimestamp()
-    uint32_t unixTime = getCachedUnixTime();  // ← JEDEN odczyt z cache, BEZ I2C!
+
+    uint32_t unixTime = getUnixTimestamp();
     
-    if (logCycleToVPS(currentCycle, unixTime)) {  // ← Przekaż uint32_t
+    if (logCycleToVPS(currentCycle, unixTime)) {
         LOG_INFO("Cycle data sent to VPS successfully");
     } else {
         LOG_WARNING("Failed to send cycle data to VPS");
@@ -928,8 +820,9 @@ bool WaterAlgorithm::resetErrorStatistics() {
         LOG_INFO("Error statistics reset requested via web interface");
         
         // ✅ PRZYWRÓĆ VPS logging z short timeout (3 seconds max)
+        uint32_t unixTime = getUnixTimestamp();
         String timestamp = getCurrentTimestamp();
-        bool vpsSuccess = logEventToVPS("STATISTICS_RESET", 0, timestamp);
+        bool vpsSuccess = logEventToVPS("STATISTICS_RESET", 0, unixTime);
         
         if (vpsSuccess) {
             LOG_INFO("✅ Statistics reset + VPS logging: SUCCESS");
@@ -963,7 +856,7 @@ void WaterAlgorithm::addManualVolume(uint16_t volumeML) {
     dailyVolumeML += volumeML;
     
     // Save to FRAM
-    if (!saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate)) {
+    if (!saveDailyVolumeToFRAM(dailyVolumeML, lastResetUTCDay)) {
         LOG_WARNING("⚠️ Failed to save daily volume to FRAM after manual pump");
     }
     
@@ -1061,34 +954,28 @@ bool WaterAlgorithm::resetDailyVolume() {
     LOG_INFO("MANUAL DAILY VOLUME RESET REQUESTED");
     LOG_INFO("====================================");
     LOG_INFO("Previous volume: %dml", dailyVolumeML);
-    LOG_INFO("Current date: %s", lastResetDate);
+    LOG_INFO("Current UTC day: %lu", lastResetUTCDay);
     
-    // Check if pump is active
     if (isPumpActive()) {
         LOG_WARNING("❌ Reset blocked - pump is active");
-        LOG_WARNING("Please wait for pump cycle to complete");
         return false;
     }
     
-    // Reset volume to 0
     dailyVolumeML = 0;
     todayCycles.clear();
     
-    // Save to FRAM
-    if (!saveDailyVolumeToFRAM(dailyVolumeML, lastResetDate)) {
+    if (!saveDailyVolumeToFRAM(dailyVolumeML, lastResetUTCDay)) {
         LOG_ERROR("⚠️ Failed to save reset volume to FRAM");
         return false;
     }
     
     LOG_INFO("✅ Daily volume reset to 0ml");
-    LOG_INFO("Date remains: %s", lastResetDate);
+    LOG_INFO("UTC day remains: %lu", lastResetUTCDay);
     LOG_INFO("====================================");
     
     // Log to VPS
-    String timestamp = getCurrentTimestamp();
-    // bool vpsSuccess = logEventToVPS("DAILY_VOLUME_RESET", 0, timestamp);
-    bool vpsSuccess = logEventToVPS("STATISTICS_RESET", 0, timestamp);
-
+    uint32_t unixTime = getUnixTimestamp();
+    bool vpsSuccess = logEventToVPS("STATISTICS_RESET", 0, unixTime);
     
     if (vpsSuccess) {
         LOG_INFO("✅ Volume reset + VPS logging: SUCCESS");

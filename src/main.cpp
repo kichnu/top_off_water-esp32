@@ -1,19 +1,10 @@
-
-
 #include <Arduino.h>
 #include "mode_config.h"
-
-// ===============================
-// CONDITIONAL INCLUDES
-// ===============================
-
-// Zawsze dostępne
 #include "core/logging.h"
 #include "hardware/rtc_controller.h"
 #include "hardware/fram_controller.h"
 #include "hardware/hardware_pins.h"
 #include "cli/cli_handler.h" 
-#include "hardware/time_cache.h"
 
 #if MODE_PROGRAMMING
 void setupProgrammingMode();
@@ -118,34 +109,22 @@ void setupProductionMode() {
     
     Serial.println("[INIT] Initializing network...");
     initWiFi();
-    
-    // 🆕 Initialize RTC
-    Serial.println("[INIT] Initializing RTC...");
+
+    LOG_INFO("[INIT] Initializing RTC...");
     initializeRTC();
-    Serial.print("RTC Status: ");
-    Serial.println(getRTCInfo());
+    LOG_INFO("RTC Status: %s", getRTCInfo().c_str());
     
-    // 🆕 CRITICAL: Wait for RTC to stabilize
-    Serial.println("[INIT] Waiting for RTC to stabilize...");
-    delay(2000);  // 2 second delay
+    LOG_INFO("[INIT] Waiting for RTC to stabilize...");
+    delay(2000);
     
-    // 🆕 Initialize time cache (with retry)
-    Serial.println("[INIT] Initializing time cache...");
-    initTimeCache();
-    
-    // 🆕 Verify cache before proceeding
-    if (!globalTimeCache.isValid) {
-        Serial.println("⚠️ WARNING: Time cache initialization failed");
-        Serial.println("⚠️ Daily volume tracking will be suspended");
-        Serial.println("⚠️ System will auto-recover when RTC becomes available");
-    } else {
-        Serial.println("✅ Time cache initialized successfully");
+    if (!isRTCWorking()) {
+        LOG_WARNING("⚠️ WARNING: RTC not working properly");
+        LOG_WARNING("⚠️ Daily volume tracking may be affected");
     }
     
-    // 🆕 Initialize daily volume (AFTER RTC + cache)
-    Serial.println("[INIT] Initializing daily volume tracking...");
+    LOG_INFO("[INIT] Initializing daily volume tracking...");
     waterAlgorithm.initDailyVolume();
-    
+
     // Initialize security
     initAuthManager();
     initSessionManager();
@@ -159,19 +138,18 @@ void setupProductionMode() {
     
     // Post-init diagnostics
     Serial.println();
-    Serial.println("====================================");
-    Serial.println("SYSTEM POST-INIT STATUS");
-    Serial.println("====================================");
-    
-    LOG_INFO("Time Cache: %s", globalTimeCache.isValid ? "VALID" : "INVALID");
-    LOG_INFO("Current Date: %s", getCachedDate());
+    LOG_INFO("====================================");
+    LOG_INFO("SYSTEM POST-INIT STATUS");
+    LOG_INFO("====================================");
+    LOG_INFO("RTC Working: %s", isRTCWorking() ? "YES" : "NO");
+    LOG_INFO("RTC Info: %s", getRTCInfo().c_str());
+    LOG_INFO("Current Time: %s", getCurrentTimestamp().c_str());
     LOG_INFO("Water Algorithm:");
-    LOG_INFO("  Daily Volume: %d ml / %d ml", 
+    LOG_INFO("  State: %s", waterAlgorithm.getStateString());
+    LOG_INFO("  Daily Volume: %d / %d ml", 
              waterAlgorithm.getDailyVolume(), FILL_WATER_MAX);
-    LOG_INFO("  Last Reset Date: '%s'", waterAlgorithm.getLastResetDate());
-    LOG_INFO("  Current State: %s", waterAlgorithm.getStateString());
-    
-    Serial.println("====================================");
+    LOG_INFO("  UTC Day: %lu", waterAlgorithm.getLastResetUTCDay());
+    LOG_INFO("====================================");
     Serial.println();
     
     Serial.println("=== System initialization complete ===");
@@ -222,8 +200,6 @@ void loop() {
     checkWaterSensors();
     checkPumpAutoEnable();
 
-    periodicNTPSync();  // Sprawdza co godzinę czy trzeba synchronizować
-    
     // Update other systems every 100ms
     if (now - lastUpdate >= 100) {
         updatePumpController();

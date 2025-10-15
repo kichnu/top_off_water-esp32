@@ -6,7 +6,7 @@
 #include <WiFi.h>
 #include <time.h>
 #include "../network/wifi_manager.h"
-#include "time_cache.h"
+
 
 // ===============================
 // NTP & TIMEZONE CONFIGURATION
@@ -179,34 +179,6 @@ bool setRTCFromNTP() {
     return true;
 }
 
-void periodicNTPSync() {
-    if (!rtcInitialized || useInternalRTC) {
-        return;
-    }
-    
-    if (!isWiFiConnected()) {
-        return;
-    }
-    
-    unsigned long now = millis();
-    if (now - lastNTPSync >= NTP_SYNC_INTERVAL) {
-        LOG_INFO("Periodic NTP synchronization (every 1 hour)...");
-        
-        if (setRTCFromNTP()) {
-            LOG_INFO("✅ Periodic sync successful");
-            rtcNeedsSync = false;
-
-            if (batteryIssueDetected) {
-            LOG_WARNING("⚠️ Battery issue persists - replace CR2032 battery");
-    }
-            // batteryIssueDetected = false;  // Clear battery flag after successful sync
-        } else {
-            LOG_WARNING("⚠️ Periodic sync failed - will retry in 1 hour");
-            lastNTPSync = now;  // Ustaw czas aby nie spamować
-        }
-    }
-}
-
 // ===============================
 // RTC INITIALIZATION
 // ===============================
@@ -281,29 +253,6 @@ void initializeRTC() {
             LOG_INFO("RTC current time (UTC): %04d-%02d-%02d %02d:%02d:%02d", 
                      now.year(), now.month(), now.day(),
                      now.hour(), now.minute(), now.second());
-            LOG_INFO("Compile time:           %04d-%02d-%02d %02d:%02d:%02d",
-                     compileTime.year(), compileTime.month(), compileTime.day(),
-                     compileTime.hour(), compileTime.minute(), compileTime.second());
-            
-            // ✅ Sprawdź czy RTC jest starszy niż compile time + margin (5 minut)
-            if (now.unixtime() <= compileTime.unixtime() + 300) {
-                LOG_WARNING("⚠️ RTC time is NOT newer than compile time!");
-                LOG_INFO("RTC may be out of sync - attempting NTP sync...");
-                
-                rtcNeedsSync = true;
-                
-                if (setRTCFromNTP()) {
-                    LOG_INFO("✅ RTC successfully updated from NTP");
-                    rtcNeedsSync = false;
-                    batteryIssueDetected = false;
-                    rtcInitialized = true;
-                    useInternalRTC = false;
-                    return;
-                } else {
-                    LOG_WARNING("⚠️ NTP sync failed - using RTC with potentially stale time");
-                    LOG_INFO("System will retry NTP sync every hour");
-                }
-            }
             
             // Walidacja komponentów czasu
             bool timeValid = true;
@@ -388,27 +337,7 @@ void initializeRTC() {
 // PUBLIC API
 // ===============================
 
-
 String getCurrentTimestamp() {
-    // 🆕 P2: Zwróć z cache jeśli świeży
-    if (globalTimeCache.isValid && !shouldRefreshCache()) {
-        // Cache jest świeży - konwertuj z unix timestamp
-        time_t t = (time_t)globalTimeCache.unixTimestamp;
-        
-        // Uwzględnij elapsed time dla dokładności
-        uint32_t elapsedSeconds = (millis() - globalTimeCache.lastRTCRead) / 1000;
-        t += elapsedSeconds;
-        
-        struct tm timeinfo;
-        localtime_r(&t, &timeinfo);
-        
-        char buffer[32];
-        strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
-        
-        return String(buffer);
-    }
-    
-    // Cache needs refresh - read from RTC
     static String lastValidTimestamp = "";
     static uint32_t lastValidTime = 0;
     
@@ -421,7 +350,6 @@ String getCurrentTimestamp() {
         return lastValidTimestamp.length() > 0 ? lastValidTimestamp : "RTC_NOT_INITIALIZED";
     }
     
-    // RETRY MECHANISM
     const int MAX_RETRIES = 3;
     DateTime now;
     bool validRead = false;
@@ -459,7 +387,7 @@ String getCurrentTimestamp() {
         return "RTC_ERROR";
     }
     
-    // Valid read - update cache AND return
+    // Convert UTC → Local
     time_t utc = now.unixtime();
     struct tm timeinfo;
     localtime_r(&utc, &timeinfo);
@@ -470,103 +398,10 @@ String getCurrentTimestamp() {
     lastValidTimestamp = String(buffer);
     lastValidTime = millis();
     
-    // 🆕 P2: Update global cache
-    if (globalTimeCache.isValid) {
-        strncpy(globalTimeCache.currentDate, buffer, 10);
-        globalTimeCache.currentDate[10] = '\0';
-        globalTimeCache.unixTimestamp = utc;
-        globalTimeCache.lastRTCRead = millis();
-    }
-    
     return String(buffer);
 }
 
-
-// String getCurrentTimestamp() {
-//     static String lastValidTimestamp = "";  // Cache last valid timestamp
-//     static uint32_t lastValidTime = 0;      // When was it valid
-    
-//     if (!rtcInitialized) {
-//         static uint32_t lastWarning = 0;
-//         if (millis() - lastWarning > 30000) {
-//             LOG_ERROR("RTC not initialized in getCurrentTimestamp()");
-//             lastWarning = millis();
-//         }
-//         return lastValidTimestamp.length() > 0 ? lastValidTimestamp : "RTC_NOT_INITIALIZED";
-//     }
-    
-//     // 🆕 RETRY MECHANISM: Try multiple times if we get invalid data
-//     const int MAX_RETRIES = 3;
-//     DateTime now;
-//     bool validRead = false;
-    
-//     for (int retry = 0; retry < MAX_RETRIES; retry++) {
-//         now = rtc.now();
-        
-//         // Check if read is valid
-//         if (now.year() >= 2024 && now.year() <= 2030) {
-//             validRead = true;
-//             break;
-//         }
-        
-//         // Invalid read - log and retry
-//         if (retry == 0) {  // Only log first failure
-//             LOG_WARNING("RTC read invalid (attempt %d/%d): %04d-%02d-%02d", 
-//                        retry + 1, MAX_RETRIES,
-//                        now.year(), now.month(), now.day());
-//         }
-        
-//         delay(10);  // Short delay before retry
-//     }
-    
-//     if (!validRead) {
-//         // All retries failed
-//         static uint32_t lastError = 0;
-//         if (millis() - lastError > 10000) {
-//             LOG_ERROR("RTC read failed after %d retries: %04d-%02d-%02d %02d:%02d:%02d",
-//                      MAX_RETRIES,
-//                      now.year(), now.month(), now.day(),
-//                      now.hour(), now.minute(), now.second());
-//             LOG_ERROR("RTC Info: %s", getRTCInfo().c_str());
-//             lastError = millis();
-//         }
-        
-//         // 🆕 CRITICAL: Use cached value if recent (< 10 seconds old)
-//         if (lastValidTimestamp.length() > 0 && 
-//             (millis() - lastValidTime) < 10000) {
-//             LOG_WARNING("Using cached timestamp (age: %dms)", millis() - lastValidTime);
-//             return lastValidTimestamp;
-//         }
-        
-//         // No recent cache - return error
-//         return "RTC_ERROR";
-//     }
-    
-//     // Valid read - process and cache
-//     time_t utc = now.unixtime();
-//     struct tm timeinfo;
-//     localtime_r(&utc, &timeinfo);
-    
-//     char buffer[32];
-//     strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
-    
-//     // Update cache
-//     lastValidTimestamp = String(buffer);
-//     lastValidTime = millis();
-    
-//     return String(buffer);
-// }
-
-
 unsigned long getUnixTimestamp() {
-    // 🆕 P2: Return from cache if fresh
-    if (globalTimeCache.isValid && !shouldRefreshCache()) {
-        // Add elapsed time for accuracy
-        uint32_t elapsedSeconds = (millis() - globalTimeCache.lastRTCRead) / 1000;
-        return globalTimeCache.unixTimestamp + elapsedSeconds;
-    }
-    
-    // Cache needs refresh or invalid - read RTC
     if (!rtcInitialized) {
         return 1609459200;  // 2021-01-01 00:00:00 UTC
     }
@@ -583,42 +418,38 @@ unsigned long getUnixTimestamp() {
         
         return mktime(&tm_time);
     } else {
-        uint32_t timestamp = rtc.now().unixtime();
+        // ✅ RETRY MECHANISM - jak w getCurrentTimestamp()
+        const int MAX_RETRIES = 3;
+        DateTime now;
+        bool validRead = false;
         
-        // Update cache
-        if (globalTimeCache.isValid) {
-            globalTimeCache.unixTimestamp = timestamp;
-            globalTimeCache.lastRTCRead = millis();
+        for (int retry = 0; retry < MAX_RETRIES; retry++) {
+            now = rtc.now();
+            
+            // ✅ Walidacja roku
+            if (now.year() >= 2024 && now.year() <= 2035) {
+                validRead = true;
+                break;
+            }
+            
+            if (retry < MAX_RETRIES - 1) {
+                delay(10);
+            }
         }
         
-        return timestamp;
+        if (!validRead) {
+            static uint32_t lastError = 0;
+            if (millis() - lastError > 10000) {
+                LOG_ERROR("RTC read failed in getUnixTimestamp(), year: %d", now.year());
+                lastError = millis();
+            }
+            // ✅ Fallback: zwróć sensowną wartość zamiast śmieci
+            return 1735689600;  // 2025-01-01 00:00:00 UTC
+        }
+        
+        return now.unixtime();
     }
 }
-
-
-// unsigned long getUnixTimestamp() {
-//     if (!rtcInitialized) {
-//         return 1609459200;  // 2021-01-01 00:00:00 UTC
-//     }
-    
-//     if (useInternalRTC) {
-//         // Fallback: konwertuj internal time na timestamp
-//         struct tm tm_time;
-//         tm_time.tm_year = internalTime.year - 1900;
-//         tm_time.tm_mon = internalTime.month - 1;
-//         tm_time.tm_mday = internalTime.day;
-//         tm_time.tm_hour = internalTime.hour;
-//         tm_time.tm_min = internalTime.minute;
-//         tm_time.tm_sec = internalTime.second;
-//         tm_time.tm_isdst = 0;
-        
-//         return mktime(&tm_time);
-        
-//     } else {
-//         // ✅ Hardware RTC: zwróć UTC timestamp bezpośrednio
-//         return rtc.now().unixtime();
-//     }
-// }
 
 bool isRTCWorking() {
     if (!rtcInitialized) {
@@ -668,12 +499,4 @@ bool rtcNeedsSynchronization() {
 
 bool isBatteryIssueDetected() {
     return batteryIssueDetected;
-}
-
-void updateTimeCacheFromRTC() {
-    if (globalTimeCache.isValid) {
-        updateTimeCache();
-    } else {
-        initTimeCache();
-    }
 }

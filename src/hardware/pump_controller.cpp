@@ -58,11 +58,11 @@ void updatePumpController() {
             LOG_INFO("ℹ️ MANUAL_EXTENDED (calibration) - NOT added to daily volume");
         }
 
-        // Log to VPS (skip AUTO_PUMP - handled by algorithm)
         if (!currentActionType.startsWith("AUTO")) {
-            logEventToVPS(currentActionType, volumeML, getCurrentTimestamp());
+            uint32_t unixTime = getUnixTimestamp();
+            logEventToVPS(currentActionType, volumeML, unixTime);
         }
-        currentActionType = "";         
+        currentActionType = "";       
     }
 
       static bool wasManualActive = false;

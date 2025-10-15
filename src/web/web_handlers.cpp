@@ -391,7 +391,7 @@ void handleGetDailyVolume(AsyncWebServerRequest* request) {
     response += "\"success\":true,";
     response += "\"daily_volume\":" + String(waterAlgorithm.getDailyVolume()) + ",";
     response += "\"max_volume\":" + String(FILL_WATER_MAX) + ",";
-    response += "\"last_reset_date\":\"" + String(waterAlgorithm.getLastResetDate()) + "\"";
+    response += "\"last_reset_utc_day\":" + String(waterAlgorithm.getLastResetUTCDay());  // ← ZMIANA
     response += "}";
     
     request->send(200, "application/json", response);
@@ -422,7 +422,7 @@ void handleResetDailyVolume(AsyncWebServerRequest* request) {
         String response = "{";
         response += "\"success\":true,";
         response += "\"daily_volume\":" + String(waterAlgorithm.getDailyVolume()) + ",";
-        response += "\"last_reset_date\":\"" + String(waterAlgorithm.getLastResetDate()) + "\"";
+        response += "\"last_reset_utc_day\":" + String(waterAlgorithm.getLastResetUTCDay());  // ← ZMIANA
         response += "}";
         
         request->send(200, "application/json", response);

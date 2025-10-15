@@ -618,158 +618,82 @@ bool verifyCredentialsInFRAM() {
 uint16_t calculateDailyVolumeChecksum(const DailyVolumeData& data) {
     uint16_t sum = 0;
     sum += data.volume_ml;
-    
-    // Add date string to checksum
-    for (int i = 0; i < 11 && data.last_reset_date[i] != '\0'; i++) {
-        sum += (uint8_t)data.last_reset_date[i];
-    }
-    
+    sum += (data.last_reset_utc_day >> 16) & 0xFFFF;
+    sum += data.last_reset_utc_day & 0xFFFF;
     return sum;
 }
 
-bool saveDailyVolumeToFRAM(uint16_t dailyVolume, const char* resetDate) {
+bool saveDailyVolumeToFRAM(uint16_t dailyVolume, uint32_t utcDay) {
     if (!framInitialized) {
         LOG_ERROR("FRAM not initialized for daily volume save");
         return false;
     }
     
-    // Sanity check
     if (dailyVolume > 10000) {
         LOG_ERROR("Invalid daily volume: %d (max 10000ml)", dailyVolume);
         return false;
     }
     
-    if (!resetDate || strlen(resetDate) != 10) {
-        LOG_ERROR("Invalid reset date format (expected YYYY-MM-DD)");
-        return false;
-    }
-    
-    // Prepare data structure
     DailyVolumeData data;
     data.volume_ml = dailyVolume;
-    strncpy(data.last_reset_date, resetDate, 11);
-    data.last_reset_date[11] = '\0';
+    data.last_reset_utc_day = utcDay;
     
     // Write volume
     fram.write(FRAM_ADDR_DAILY_VOLUME, (uint8_t*)&data.volume_ml, 2);
     
-    // Write date string
-    fram.write(FRAM_ADDR_LAST_RESET_DATE, (uint8_t*)data.last_reset_date, 12);
+    // Write UTC day
+    fram.write(FRAM_ADDR_LAST_RESET_UTC, (uint8_t*)&data.last_reset_utc_day, 4);
     
     // Calculate and write checksum
     uint16_t checksum = calculateDailyVolumeChecksum(data);
     fram.write(FRAM_ADDR_DAILY_CHECKSUM, (uint8_t*)&checksum, 2);
     
-    // Verify write by reading back
+    // Verify write
     DailyVolumeData verify;
     fram.read(FRAM_ADDR_DAILY_VOLUME, (uint8_t*)&verify.volume_ml, 2);
-    fram.read(FRAM_ADDR_LAST_RESET_DATE, (uint8_t*)verify.last_reset_date, 12);
+    fram.read(FRAM_ADDR_LAST_RESET_UTC, (uint8_t*)&verify.last_reset_utc_day, 4);
     
-    if (verify.volume_ml != dailyVolume || 
-        strcmp(verify.last_reset_date, resetDate) != 0) {
+    if (verify.volume_ml != dailyVolume || verify.last_reset_utc_day != utcDay) {
         LOG_ERROR("FRAM daily volume write verification failed!");
         return false;
     }
     
-    LOG_INFO("✅ Daily volume saved to FRAM: %dml (date: %s)", dailyVolume, resetDate);
+    LOG_INFO("✅ Daily volume saved to FRAM: %dml (UTC day: %lu)", dailyVolume, utcDay);
     return true;
 }
 
-// bool loadDailyVolumeFromFRAM(uint16_t& dailyVolume, char* resetDate) {
-//     if (!framInitialized) {
-//         LOG_ERROR("FRAM not initialized for daily volume load");
-//         return false;
-//     }
-    
-//     // Read data
-//     DailyVolumeData data;
-//     fram.read(FRAM_ADDR_DAILY_VOLUME, (uint8_t*)&data.volume_ml, 2);
-//     fram.read(FRAM_ADDR_LAST_RESET_DATE, (uint8_t*)data.last_reset_date, 12);
-    
-//     // Verify checksum
-//     uint16_t calculatedChecksum = calculateDailyVolumeChecksum(data);
-//     uint16_t storedChecksum = 0;
-//     fram.read(FRAM_ADDR_DAILY_CHECKSUM, (uint8_t*)&storedChecksum, 2);
-    
-//     if (calculatedChecksum != storedChecksum) {
-//         LOG_WARNING("Daily volume checksum mismatch: stored=%d, calculated=%d", 
-//                     storedChecksum, calculatedChecksum);
-//         return false;
-//     }
-    
-//     // Sanity check
-//     if (data.volume_ml > 10000) {
-//         LOG_WARNING("FRAM daily volume out of range: %d", data.volume_ml);
-//         return false;
-//     }
-    
-//     // Validate date format (basic check)
-//     if (strlen(data.last_reset_date) != 10 || 
-//         data.last_reset_date[4] != '-' || 
-//         data.last_reset_date[7] != '-') {
-//         LOG_WARNING("Invalid date format in FRAM: %s", data.last_reset_date);
-//         return false;
-//     }
-    
-//     // Return values
-//     dailyVolume = data.volume_ml;
-//     if (resetDate) {
-//         strcpy(resetDate, data.last_reset_date);
-//     }
-    
-//     LOG_INFO("✅ Daily volume loaded from FRAM: %dml (date: %s)", 
-//              dailyVolume, data.last_reset_date);
-    
-//     return true;
-// }
-
-// fram_controller.cpp - na początku funkcji
-
-bool loadDailyVolumeFromFRAM(uint16_t& dailyVolume, char* resetDate) {
-    Serial.println(">>> loadDailyVolumeFromFRAM() called");  // RAW serial
-    
+bool loadDailyVolumeFromFRAM(uint16_t& dailyVolume, uint32_t& utcDay) {
     if (!framInitialized) {
-        Serial.println("ERROR: FRAM not initialized");
+        LOG_ERROR("FRAM not initialized for daily volume load");
         return false;
     }
     
-    // Read data
     DailyVolumeData data;
     fram.read(FRAM_ADDR_DAILY_VOLUME, (uint8_t*)&data.volume_ml, 2);
-    fram.read(FRAM_ADDR_LAST_RESET_DATE, (uint8_t*)data.last_reset_date, 12);
-    
-    Serial.printf("  FRAM raw: volume=%d, date='%s'\n", data.volume_ml, data.last_reset_date);
+    fram.read(FRAM_ADDR_LAST_RESET_UTC, (uint8_t*)&data.last_reset_utc_day, 4);
     
     // Verify checksum
     uint16_t calculatedChecksum = calculateDailyVolumeChecksum(data);
     uint16_t storedChecksum = 0;
     fram.read(FRAM_ADDR_DAILY_CHECKSUM, (uint8_t*)&storedChecksum, 2);
     
-    Serial.printf("  Checksum: stored=%d, calc=%d\n", storedChecksum, calculatedChecksum);
-    
     if (calculatedChecksum != storedChecksum) {
-        Serial.println("  CHECKSUM MISMATCH - rejecting data");
+        LOG_WARNING("Daily volume checksum mismatch: stored=%d, calculated=%d", 
+                    storedChecksum, calculatedChecksum);
         return false;
     }
     
-    // Sanity checks...
+    // Sanity check
     if (data.volume_ml > 10000) {
-        Serial.printf("  Volume out of range: %d\n", data.volume_ml);
-        return false;
-    }
-    
-    if (strlen(data.last_reset_date) != 10 || 
-        data.last_reset_date[4] != '-' || 
-        data.last_reset_date[7] != '-') {
-        Serial.printf("  Invalid date format: '%s'\n", data.last_reset_date);
+        LOG_WARNING("FRAM daily volume out of range: %d", data.volume_ml);
         return false;
     }
     
     dailyVolume = data.volume_ml;
-    if (resetDate) {
-        strcpy(resetDate, data.last_reset_date);
-    }
+    utcDay = data.last_reset_utc_day;
     
-    Serial.printf("  SUCCESS: returning %dml, '%s'\n", dailyVolume, data.last_reset_date);
+    LOG_INFO("✅ Daily volume loaded from FRAM: %dml (UTC day: %lu)", 
+             dailyVolume, utcDay);
+    
     return true;
 }

@@ -52,7 +52,7 @@ private:
     std::vector<PumpCycle> todayCycles;
     uint32_t dayStartTime;
     uint16_t dailyVolumeML;
-    char lastResetDate[12];
+    uint32_t lastResetUTCDay;
     bool resetPending;
     
     // Private methods
@@ -107,7 +107,8 @@ public:
     bool requestManualPump(uint16_t duration_ms);
     void onManualPumpComplete();
 
-    const char* getLastResetDate() const { return lastResetDate; }
+    uint32_t getLastResetUTCDay() const { return lastResetUTCDay; }
+    
 
     void addManualVolume(uint16_t volumeML);
 };
