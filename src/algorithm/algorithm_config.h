@@ -2,25 +2,25 @@
 #define ALGORITHM_CONFIG_H
 #include <Arduino.h>
 
-// #define TIME_TO_PUMP            1800    // czas od TRIGGER do startu pompy
-// #define TIME_GAP_1_MAX          1600    // max oczekiwanie na drugi czujnik (TRYB_1)
-// #define TIME_GAP_2_MAX          30    //  max oczekiwanie na drugi czujnik (TRYB_2)
-// #define THRESHOLD_1             1000    // próg dla TIME_GAP_1
-// #define THRESHOLD_2             15     // próg dla TIME_GAP_2
-// #define WATER_TRIGGER_MAX_TIME  240    // max czas na reakcję czujników po starcie pompy
-// #define THRESHOLD_WATER         120     // próg dla WATER_TRIGGER_TIME
-// #define LOGGING_TIME            5      // czas na logowanie po cyklu
-// #define SENSOR_DEBOUNCE_TIME    1      // debouncing czujników
-
-#define TIME_TO_PUMP            10    // czas od TRIGGER do startu pompy
-#define TIME_GAP_1_MAX          8    // max oczekiwanie na drugi czujnik (TRYB_1)
-#define TIME_GAP_2_MAX          8    //  max oczekiwanie na drugi czujnik (TRYB_2)
-#define THRESHOLD_1             4    // próg dla TIME_GAP_1
-#define THRESHOLD_2             4     // próg dla TIME_GAP_2
-#define WATER_TRIGGER_MAX_TIME  40    // max czas na reakcję czujników po starcie pompy/musi być większy od czasu pracy pompy
-#define THRESHOLD_WATER         4     // próg dla WATER_TRIGGER_TIME
+#define TIME_TO_PUMP            1800    // czas od TRIGGER do startu pompy
+#define TIME_GAP_1_MAX          1600    // max oczekiwanie na drugi czujnik (TRYB_1)
+#define TIME_GAP_2_MAX          30    //  max oczekiwanie na drugi czujnik (TRYB_2)
+#define THRESHOLD_1             1000    // próg dla TIME_GAP_1
+#define THRESHOLD_2             15     // próg dla TIME_GAP_2
+#define WATER_TRIGGER_MAX_TIME  240    // max czas na reakcję czujników po starcie pompy
+#define THRESHOLD_WATER         120     // próg dla WATER_TRIGGER_TIME
 #define LOGGING_TIME            5      // czas na logowanie po cyklu
 #define SENSOR_DEBOUNCE_TIME    1      // debouncing czujników
+
+// #define TIME_TO_PUMP            10    // czas od TRIGGER do startu pompy
+// #define TIME_GAP_1_MAX          8    // max oczekiwanie na drugi czujnik (TRYB_1)
+// #define TIME_GAP_2_MAX          8    //  max oczekiwanie na drugi czujnik (TRYB_2)
+// #define THRESHOLD_1             4    // próg dla TIME_GAP_1
+// #define THRESHOLD_2             4     // próg dla TIME_GAP_2
+// #define WATER_TRIGGER_MAX_TIME  40    // max czas na reakcję czujników po starcie pompy/musi być większy od czasu pracy pompy
+// #define THRESHOLD_WATER         4     // próg dla WATER_TRIGGER_TIME
+// #define LOGGING_TIME            5      // czas na logowanie po cyklu
+// #define SENSOR_DEBOUNCE_TIME    1      // debouncing czujników
 
 // ============== PARAMETRY POMPY ==============
 #define PUMP_MAX_ATTEMPTS       3      // Maksymalna liczba prób pompy w TRYB_2
@@ -33,14 +33,14 @@
 #define ERROR_PAUSE             2000   // ms - pauza przed powtórzeniem sekwencji
 
 // ============== SPRAWDZENIA INTEGRALNOŚCI ==============
-// static_assert(TIME_TO_PUMP > (TIME_GAP_1_MAX * 1.1));
-// static_assert(TIME_TO_PUMP > 1000);
-// static_assert(TIME_GAP_1_MAX > (THRESHOLD_1 * 1.2));
-// static_assert(WATER_TRIGGER_MAX_TIME > (THRESHOLD_WATER * 1.2));
-// static_assert(SINGLE_DOSE_VOLUME > 100 || SINGLE_DOSE_VOLUME < 300);
-// static_assert(FILL_WATER_MAX > 1000 || FILL_WATER_MAX < 3000);
-// static_assert(LOGGING_TIME == 5);
-// static_assert(SENSOR_DEBOUNCE_TIME == 1);
+static_assert(TIME_TO_PUMP > (TIME_GAP_1_MAX * 1.1));
+static_assert(TIME_TO_PUMP > 1000);
+static_assert(TIME_GAP_1_MAX > (THRESHOLD_1 * 1.2));
+static_assert(WATER_TRIGGER_MAX_TIME > (THRESHOLD_WATER * 1.2));
+static_assert(SINGLE_DOSE_VOLUME > 100 || SINGLE_DOSE_VOLUME < 300);
+static_assert(FILL_WATER_MAX > 1000 || FILL_WATER_MAX < 3000);
+static_assert(LOGGING_TIME == 5);
+static_assert(SENSOR_DEBOUNCE_TIME == 1);
 
 
 
