@@ -11,34 +11,86 @@ const char* LOGIN_HTML = R"rawliteral(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ESP32-C3 Water System Login</title>
+    
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh;
+        body {
+          font-family: Arial, sans-serif;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          margin: 0;
+          padding: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 100vh;
         }
-        .login-box { 
-            background: white; padding: 40px; border-radius: 15px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 100%; max-width: 400px; 
+        .login-box {
+          background: white;
+          padding: 40px;
+          border-radius: 15px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+          width: 100%;
+          max-width: 400px;
         }
-        h1 { text-align: center; color: #333; margin-bottom: 30px; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-weight: bold; color: #333; }
-        input[type="password"] { 
-            width: 100%; padding: 15px; border: 2px solid #ddd; border-radius: 8px; 
-            font-size: 16px; box-sizing: border-box;
+        h1 {
+          text-align: center;
+          color: #333;
+          margin-bottom: 30px;
         }
-        input[type="password"]:focus { outline: none; border-color: #667eea; }
-        .login-btn { 
-            width: 100%; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; border: none; border-radius: 8px; font-size: 16px; 
-            font-weight: bold; cursor: pointer;
+        .form-group {
+          margin-bottom: 20px;
         }
-        .login-btn:hover { opacity: 0.9; }
-        .alert { padding: 15px; margin: 15px 0; border-radius: 8px; display: none; }
-        .alert.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .info { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; font-size: 12px; color: #666; }
-    </style>
+        label {
+          display: block;
+          margin-bottom: 8px;
+          font-weight: bold;
+          color: #333;
+        }
+        input[type="password"] {
+          width: 100%;
+          padding: 15px;
+          border: 2px solid #ddd;
+          border-radius: 8px;
+          font-size: 16px;
+          box-sizing: border-box;
+        }
+        input[type="password"]:focus {
+          outline: none;
+          border-color: #667eea;
+        }
+        .login-btn {
+          width: 100%;
+          padding: 15px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-size: 16px;
+          font-weight: bold;
+          cursor: pointer;
+        }
+        .login-btn:hover {
+          opacity: 0.9;
+        }
+        .alert {
+          padding: 15px;
+          margin: 15px 0;
+          border-radius: 8px;
+          display: none;
+        }
+        .alert.error {
+          background: #f8d7da;
+          color: #721c24;
+          border: 1px solid #f5c6cb;
+        }
+        .info {
+          margin-top: 20px;
+          padding: 15px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          font-size: 12px;
+          color: #666;
+        }
+</style>    
 </head>
 <body>
     <div class="login-box">
@@ -125,366 +177,600 @@ const char* DASHBOARD_HTML = R"rawliteral(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ESP32-C3 Water System Dashboard</title>
+
     <style>
-        body { 
-            font-family: Arial, sans-serif; margin: 0; padding: 20px;
-            background: #667eea 0%;
-            min-height: 100vh;
-        }
-        .container { max-width: 1000px; margin: 0 auto; }
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background: #667eea 0%;
+        min-height: 100vh;
+      }
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+      }
 
+      .header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        color: white;
+        position: relative;
+        /* margin-bottom: 30px; */
+      }
 
-        // .header { 
-        //     text-align: center; color: white; margin-bottom: 30px; position: relative;
-        // }
+      .Header-nav {
+        display: flex;
+      }
 
+      .header h1 {
+        margin: 0;
+        font-size: 32px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+      .logout-btn {
+        margin-left: 50px;
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      .logout-btn:hover {
+        background: #c82333;
+      }
+      .card {
+        background: white;
+        padding: 25px;
+        margin: 15px 0;
+        border-radius: 5px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+      }
+      .card h2 {
+        margin-top: 0;
+        color: #333;
+        border-bottom: 3px solid #667eea;
+        padding-bottom: 10px;
+        font-size: 24px;
+      }
+      .status-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 15px;
+      }
+      .status-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        background: #dbdee0;
+        border-radius: 5px;
+      }
+      .status-label {
+        font-weight: bold;
+        color: #333;
+      }
+      .status-value {
+        font-weight: bold;
+        color: #333;
+      }
+      .button {
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 15px 25px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+        transition: all 0.3s;
+        min-width: 200px;
+        width: 30%;
+      }
+      .button:hover {
+        background: #218838;
+        transform: translateY(-2px);
+      }
+      .button:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+        transform: none;
+      }
+      .button.on-off {
+        background: #ffc107;
+        color: #333;
+      }
+      .button.on-off:hover {
+        background: #e0a800;
+      }
+      .button.danger {
+        background: #dc3545;
+      }
+      .button.danger:hover {
+        background: #c82333;
+      }
+      .btn-calibration {
+        background: #dddddd;
+        color: #333;
+        width: 200px;
+      }
+      .btn-calibration.btn-stat {
+        width: 150px;
+      }
+      .btn-calibration:hover {
+        background: #ccc;
+      }
+      /* .stats-display {
+        margin-top: 20px;
+        padding: 15px;
+      } */
 
-        .header h1 { margin: 0; font-size: 32px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
-        .logout-btn { 
-            position: absolute; top: 0; right: 0; background: #dc3545; color: white; 
-            border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;
-        }
-        .logout-btn:hover { background: #c82333; }
-        .card { 
-            background: white; padding: 25px; margin: 15px 0; border-radius: 5px; 
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-        }
-        .card h2 { 
-            margin-top: 0; color: #333; border-bottom: 3px solid #667eea; 
-            padding-bottom: 10px; font-size: 24px;
-        }
-        .status-grid  { 
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); 
-            gap: 15px; margin: 20px 0;
-        }
-        .status-item { 
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 15px; background: #dbdee0; border-radius: 5px; 
-            
-        }
-        .status-label { font-weight: bold; color: #333;  }
-        .status-value { font-weight: bold; color: #333;}
-        .button { 
-            background: #28a745; color: white; border: none; padding: 15px 25px; 
-            border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; 
-            margin: 10px 5px; transition: all 0.3s; min-width: 150px; width: 30%;
-        }
-        .button:hover { background: #218838; transform: translateY(-2px); }
-        .button:disabled { background: #6c757d; cursor: not-allowed; transform: none; }
-        .button.on-off { background: #ffc107; color: #333; }
-        .button.on-off:hover { background: #e0a800; }
-        .button.danger { background: #dc3545; }
-        .button.danger:hover { background: #c82333; }
-        .btn-calibration { background: #dddddd; color: #333; width: 200px;}
-        .btn-calibration.btn-stat {width: 150px;}
-        .btn-calibration:hover { background: #ccc; }
+      .stats {
+        font-weight: bold;
+        font-size: 14px;
+        margin-top: 10px;
+      }
 
+      /* .stats-values span {
+        font-weight: bold;
+      } */
 
-        // .alert { 
-        //     padding: 15px; margin: 15px 0; border-radius: 10px; font-weight: bold; 
-        // }
+      .stats-reset {
+        font-size: 14px;
+        font-weight: bold;
+        margin-left: 15px;
+      }
 
-        /* Statistics Display */
-        .stats-display {
-            margin-top: 20px;
-            padding: 15px;
-            /* background: #f8f9fa; */
-            /* border-radius: 8px; */
-            /* border: 1px solid #dee2e6; */
-        }
-        
-        .stats-values {
-            font-weight: bold;
-            font-size: 14px;
-            margin-left: 15px;
-            margin-right: 30px;
-            /* color: #2c3e50; */
-            /* margin-bottom: 8px; */
-        }
-        
-        .stats-values span {
-            /* color: #e74c3c; */
-            font-weight: bold;
-        }
-        
+      .notifications {
+        height: 25px;
+        width: 100%;
+        margin-top: 10px;
+      }
+
+      .alert {
+        background-color: #c77777;
+        /* display: block; */
+        color: white;
+        border-radius: 5px;
+        margin-top: 20px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+      }
+
+      @media (max-width: 600px) {
         .stats-reset {
-            font-size: 14px;
-            font-weight: bold;
-            margin-left: 15px;
-            /* color: #6c757d; */
-            /* width: 50%; */
+          margin-top: 10px;
         }
+      }
 
-        .header {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            color: white;
-            position: relative;
-            margin-bottom: 30px;
-        }
+      .alert.success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .alert.error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      .pump-controls {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .pump-setting {
+        display: flex;
+        justify-content: space-around;
+        flex-direction: row;
+      }
+      .pump-setting-form {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        margin-left: 30px;
+      }
 
-        .notifications {
-            height: 25px;
-            width: 100%;
-        }
+      .pump-setting-form > label {
+        font-weight: bold;
+        font-size: 18px;
+      }
 
-        .alert {
-            background-color: #c77777;
-            display: block;
-            color: white;
-            border-radius: 5px;
-            margin-top: 20px;
+      .pump-setting-form > input {
+        padding: 8px;
+        font-size: 18px;
+        border: 2px solid #ddd;
+        border-radius: 5px;
+        width: 50px;
+      }
 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-        }
+      .pump-setting-form > button {
+        background: #3498db;
+        color: white;
+        font-size: 18px;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
 
-        @media (max-width: 600px) {
-            .stats-reset {
-                margin-top: 10px;
-            }
-            
-            .stats-values {
-                font-size: 14px;
-            }
-        }
+      .rtc-error {
+        color: #e74c3c !important;
+      }
 
-        .alert.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .alert.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .pump-controls{ 
-            display: flex; flex-wrap: wrap; justify-content:space-around; align-items: center;
-            }
-            .pump-setting{
-                display: flex; flex-direction: row;
-                
-                }
-                .pump-setting-form{
-            display: flex; align-items: center; justify-content: center; gap: 15px; margin-left: 30px;
-        }
+      .pump-stats {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        text-align: center;
+        box-sizing: border-box;
+      }
 
-        .pump-setting-form > label{
-            font-weight: bold; font-size: 18px;
-        }
+      .pump-stat {
+        background-color: #f7f7f7;
+        border-radius: 5px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        width: 30%;
+        padding-top: 8px;
+        padding-bottom: 8px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
 
-        .pump-setting-form > input{
-            padding: 8px; font-size: 18px; border: 2px solid #ddd; border-radius: 5px; width: 50px;
-        }
+      .stats-reset,
+      .stats-info {
+        margin-top: 0.8rem;
+        font-size: 0.9rem;
+        color: #222;
+        font-weight: 600;
+        line-height: 1.4;
+      }
 
-        .pump-setting-form > button{
-        background: #3498db; color: white; font-size: 18px; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;   
+      .stats-reset span,
+      .stats-info span {
+        font-weight: 700;
+        color: #000;
+      }
+
+      .hardware-status {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        height: 80px;
+      }
+
+      .status-badge {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 15px 3px;
+        background: #dbdee0;
+        border-radius: 5px;
+        transition: all 0.3s ease;
+      }
+
+      .badge-label {
+        font-size: 11px;
+        font-weight: bold;
+        color: #333;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
+      }
+
+      .badge-value {
+        font-size: 15px;
+        font-weight: bold;
+        color: #333;
+      }
+
+      /* Badge state colors */
+      .status-badge.active-green {
+        background: #27ae60;
+        box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+      }
+
+      .status-badge.active-yellow {
+        background: #f39c12;
+        box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);
+      }
+
+      .status-badge.active-orange {
+        background: #e67e22;
+        box-shadow: 0 2px 8px rgba(230, 126, 34, 0.3);
+      }
+
+      .status-badge.error-red {
+        background: #e74c3c;
+        box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+      }
+
+      .status-badge.inactive-gray {
+        background: #6c757d;
+      }
+      .process-status {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 80px;
+        border-radius: 5px;
+
+        /* padding: 20px; */
+        background: #dbdee0;
+        /* min-height: 80px; */
+      }
+
+      .process-description {
+        font-size: 16px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 8px;
+        text-align: center;
+      }
+
+      .process-time {
+        font-size: 14px;
+        color: #666;
+        font-weight: 600;
+      }
+
+      /* Responsywność */
+      @media (max-width: 800px) {
+        .pump-controls {
+          flex-direction: column;
+
+          /* gap: 1.5rem; */
         }
-                
-        .rtc-error {
-            color: #e74c3c !important;
+        .pump-controls > .button {
+          margin: 10px 50px;
         }
-                        
+        .button {
+          width: 60%;
+        }
         .pump-stats {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            align-items: flex-start;
-            gap: 2rem;
-            max-width: 1000px;
-            text-align: center;
-            box-sizing: border-box;
+          flex-direction: column;
+          align-items: center;
         }
-            
         .pump-stat {
-            background-color: #f7f7f7;
-            padding: 0.5rem 1rem;
-            border-radius: 1rem;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-            min-width: 220px;
-            max-width: 260px;
-            min-height: 120px;
-            flex: 1 1 220px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+          width: 60%;
+          margin: 10px;
         }
-            
-        .button-stats.btn-stat {
-            display: inline-block;
-            background-color: #e0e0e0;
-            color: #222;
-            font-weight: 600;
-            border: none;
-            border-radius: 0.6rem;
-            padding: 0.8rem 1.2rem;
-            cursor: pointer;
-            transition: background-color 0.2s ease, transform 0.1s ease;
-            width: 100%;
-            max-width: 200px;
-        }
-            
-        .button-stats.btn-stat:hover {
-            background-color: #d5d5d5;
-        }
-            
-        .button-stats.btn-stat:active {
-            transform: scale(0.97);
-        }
-                
-        .stats-val
-        .stats-reset,
-        .stats-info {
-            margin-top: 0.8rem;
-            font-size: 0.9rem;
-            color: #222;
-            font-weight: 600;
-            line-height: 1.4;
-        }
-            
-        .stats-values span,
-        .stats-reset span,
-        .stats-info span {
-            font-weight: 700;
-            color: #000;
-        }
-                
-                /* Responsywność */
-        @media (max-width: 800px) {
-            .pump-controls {
-                gap: 1.5rem;
-            }
-            .pump-control {
-                flex: 1 1 45%;
-            }
+        .pump-setting {
+          flex-direction: column;
+          align-items: center;
         }
 
-        @media (max-width: 500px) {
-            .pump-control {
-                flex: 1 1 100%;
-            }
-                
-        @media (max-width: 600px) {
-                .status-grid { grid-template-columns: 1fr; }
-                .pump-controls, .pomp-setting { flex-direction: column; }
-                .button { width: 100%; margin: 5px 0; 
-            }
-            }
+        .button.btn-calibration {
+          width: 80%;
+        }
+        .pump-setting-form {
+          flex-direction: column;
+          margin: auto;
+          width: 80%;
+          padding-bottom: 10px;
+          padding-top: 10px;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .Header-nav {
+          flex-direction: column;
+        }
+        .pump-stat {
+          width: 80%;
+        }
+        .button {
+          width: 80%;
+        }
+        .logout-btn {
+          margin-left: 0;
+          margin-top: 10px;
+          margin-bottom: 10px;
+          /* width: 30%; */
+        }
+        .status-grid {
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+      }
+      @media (max-width: 450px) {
+        .pump-controls > .button {
+          margin: 10px 10px;
+        }
+        /* .pump-control {
+          flex: 1 1 100%;
+        } */
+        .badge-label {
+          font-size: 9px;
+        }
+        .badge-value {
+          font-size: 12px;
+        }
+        .pump-setting-form > label {
+          font-size: 14px;
+        }
+        .pump-setting-form > input {
+          font-size: 25px;
+        }
+      }
     </style>
 </head>
-<body>
 
+<body>
     <div class="container">
-        <div class="header">
-        <button class="logout-btn" onclick="logout()">Logout</button>
-        <h1> Top Off Water - System</h1>
-        <div id="notifications" class="notifications">
+      <div class="header">
+        <div class="Header-nav">
+          <h1>Top Off Water - System</h1>
+          <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
-        </div>
-        
-        <div class="card">
+        <div id="notifications" class="notifications"></div>
+      </div>
+
+      <div class="card">
         <h2>System Status</h2>
         <div class="status-grid">
-        <div class="status-item">
-        <span class="status-label">Water Level:</span>
-        <span class="status-value" id="waterStatus">Loading...</span>
+          <div class="hardware-status">
+            <div class="status-badge" id="sensor1Badge">
+              <span class="badge-label">SENSOR 1</span>
+              <span class="badge-value">OFF</span>
+            </div>
+            <div class="status-badge" id="sensor2Badge">
+              <span class="badge-label">SENSOR 2</span>
+              <span class="badge-value">OFF</span>
+            </div>
+            <div class="status-badge" id="pumpBadge">
+              <span class="badge-label">PUMP</span>
+              <span class="badge-value">IDLE</span>
+            </div>
+            <div class="status-badge" id="systemBadge">
+              <span class="badge-label">SYSTEM</span>
+              <span class="badge-value">OK</span>
+            </div>
+          </div>
+          <div class="process-status">
+            <span class="process-description" id="processDescription"
+              >IDLE - Waiting for sensors</span
+            >
+            <span class="process-time" id="processTime">—</span>
+          </div>
+
+          <div class="status-item">
+            <span class="status-label">WiFi Status:</span>
+            <span class="status-value" id="wifiStatus">Loading...</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">RTC Time(UTC):</span>
+            <span class="status-value" id="rtcTime">Loading...</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Free Memory:</span>
+            <span class="status-value" id="freeHeap">Loading...</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Uptime:</span>
+            <span class="status-value" id="uptime">Loading...</span>
+          </div>
         </div>
-        <div class="status-item">
-        <span class="status-label">Pump Status:</span>
-        <span class="status-value" id="pumpStatus">Loading...</span>
-        </div>
-        <div class="status-item">
-        <span class="status-label">WiFi Status:</span>
-        <span class="status-value" id="wifiStatus">Loading...</span>
-        </div>
-        <div class="status-item">
-        <span class="status-label">RTC Time(UTC):</span>
-        <span class="status-value" id="rtcTime">Loading...</span>
-        </div>
-        <div class="status-item">
-        <span class="status-label">Free Memory:</span>
-        <span class="status-value" id="freeHeap">Loading...</span>
-        </div>
-        <div class="status-item">
-        <span class="status-label">Uptime:</span>
-        <span class="status-value" id="uptime">Loading...</span>
-        </div>
-        </div>
-        </div>
-        
-        
-        <div class="card">
+      </div>
+
+      <div class="card">
         <h2>Pump Control</h2>
         <div class="pump-controls">
-        <button id="normalBtn" class="button" onclick="triggerNormalPump()">
-        Manual Cycle
-        </button>
-        <button id="stopBtn" class="button danger" onclick="stopPump()">
-        Stop Pump
-        </button>
-        <button id="onOffBtn" class="button on-off" onclick="togglePumpGlobal()">
-        Pump ON
-        </button>
-            
-            </div>
-            
+          <button
+            id="normalBtn"
+            class="button cycle"
+            onclick="triggerNormalPump()"
+          >
+            Manual Cycle
+          </button>
+          <button id="stopBtn" class="button danger" onclick="stopPump()">
+            Stop Pump
+          </button>
+          <button
+            id="onOffBtn"
+            class="button on-off"
+            onclick="togglePumpGlobal()"
+          >
+            Pump ON
+          </button>
         </div>
+      </div>
 
+      <div class="card">
+        <h2>Statistic</h2>
 
-
-        <div class="card">
-            <h2>Statistic</h2>
-  
-            
-            
-            <div class="pump-stats">
-                <div class="pump-stat">
-                    <button id="loadStatsBtn" class="button btn-calibration" onclick="manualLoadStatistics()">
-                        Load Statistics
-                    </button>
-                    <div class="stats-values">
-                        Err activate: <span id="gap1Value"></span><br>
-                        Err deactivate: <span id="gap2Value"></span><br>
-                        Err pump: <span id="waterValue"></span>
-                    </div>
-                </div>
-            
-                <div class="pump-stat">
-                    <button id="resetStatsBtn" class="button btn-calibration" onclick="resetStatistics()">
-                        Reset Statistics
-                    </button>
-                    <div class="stats-reset">
-                        Last Reset: <span id="resetTime">Loading...</span>
-                    </div>
-                </div>
-            
-                <div class="pump-stat">
-                    <button id="resetDailyVolumeBtn" class="button btn-calibration" onclick="resetDailyVolume()">
-                        Reset Daily Volume
-                    </button>
-                    <div class="stats-info">
-                        Current: <span id="currentDailyVolume">Loading...</span> ml<br>
-                        <small>Max: <span id="maxDailyVolume">Loading...</span> ml</small>
-                    </div>
-                </div>
+        <div class="pump-stats">
+          <div class="pump-stat">
+            <button
+              id="loadStatsBtn"
+              class="button btn-calibration"
+              onclick="manualLoadStatistics()"
+            >
+              Load Statistics
+            </button>
+            <div class="stats values">
+              Err activate: <span id="gap1Value"></span><br />
+              Err deactivate: <span id="gap2Value"></span><br />
+              Err pump: <span id="waterValue"></span>
             </div>
+          </div>
 
-        </div>
-        
-        <div class="card">
-            <h2>Pump Setting</h2>
-            <div class="pump-setting">
-
-                <button id="extendedBtn" class="button btn-calibration" onclick="triggerExtendedPump()">
-                    Pump Calibration (30s) 
-                </button>
-                <form class="pump-setting-form" id="volumeForm" onsubmit="updateVolumePerSecond(event)">
-                    <div class="pump-setting-form">
-                        <label for="volumePerSecond">Volume per Second (ml):</label>
-                        <input type="number" id="volumePerSecond" name="volumePerSecond" min="1.0" max="50.0" step="0.1" value="1.0" required placeholder="Loading...">
-                        <button type="submit">Update Setting</button>
-                        <span id="volumeStatus" style="font-size: 12px; color: #666;"></span>
-                    </div>
-                 </form>
+          <div class="pump-stat">
+            <button
+              id="resetStatsBtn"
+              class="button btn-calibration"
+              onclick="resetStatistics()"
+            >
+              Reset Statistics
+            </button>
+            <div class="stats reset">
+              Last Reset: <span id="resetTime">Loading...</span>
             </div>
+          </div>
+
+          <div class="pump-stat">
+            <button
+              id="resetDailyVolumeBtn"
+              class="button btn-calibration"
+              onclick="resetDailyVolume()"
+            >
+              Reset Daily Volume
+            </button>
+            <div class="stats info">
+              Current: <span id="currentDailyVolume">Loading...</span> ml<br />
+              <small>Max: <span id="maxDailyVolume">Loading...</span> ml</small>
+            </div>
+          </div>
         </div>
-        
+      </div>
+
+      <div class="card">
+        <h2>Pump Setting</h2>
+        <div class="pump-setting">
+          <button
+            id="extendedBtn"
+            class="button btn-calibration"
+            onclick="triggerExtendedPump()"
+          >
+            Pump Calibration (30s)
+          </button>
+          <form
+            class="pump-setting-form"
+            id="volumeForm"
+            onsubmit="updateVolumePerSecond(event)"
+          >
+            <div class="pump-setting-form">
+              <label for="volumePerSecond">Volume per Second (ml):</label>
+              <input
+                type="number"
+                id="volumePerSecond"
+                name="volumePerSecond"
+                min="1.0"
+                max="50.0"
+                step="0.1"
+                value="1.0"
+                required
+                placeholder="Loading..."
+              />
+              <button type="submit">Update Setting</button>
+              <span
+                id="volumeStatus"
+                style="font-size: 12px; color: #666"
+              ></span>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
+  </body>
 
     <script>
         function showNotification(message, type) {
