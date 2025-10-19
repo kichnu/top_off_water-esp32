@@ -119,32 +119,48 @@ void handleStatus(AsyncWebServerRequest* request) {
     }
     
     JsonDocument json;
+    
+    // ============================================
+    // HARDWARE STATUS (for badges)
+    // ============================================
+    json["sensor1_active"] = readWaterSensor1();
+    json["sensor2_active"] = readWaterSensor2();
+    json["pump_active"] = isPumpActive();
+    json["pump_attempt"] = waterAlgorithm.getPumpAttempts();
+    json["system_error"] = (waterAlgorithm.getState() == STATE_ERROR);
+    
+    // ============================================
+    // PROCESS STATUS (for description + remaining time)
+    // ============================================
+    json["state_description"] = waterAlgorithm.getStateDescription();
+    json["remaining_seconds"] = waterAlgorithm.getRemainingSeconds();
+    
+    // ============================================
+    // EXISTING STATUS FIELDS (bez zmian)
+    // ============================================
     json["water_status"] = getWaterStatus();
-    json["pump_running"] = isPumpActive();
-    json["pump_remaining"] = getPumpRemainingTime();
+    json["pump_running"] = isPumpActive();  // kept for backwards compatibility
+    json["pump_remaining"] = getPumpRemainingTime();  // kept for backwards compatibility
     json["wifi_status"] = getWiFiStatus();
     json["wifi_connected"] = isWiFiConnected();
     json["rtc_time"] = getCurrentTimestamp();
     json["rtc_working"] = isRTCWorking();
-
-    json["rtc_info"] = getTimeSourceInfo();    // 🆕 CHANGED
+    json["rtc_info"] = getTimeSourceInfo();
     json["rtc_hardware"] = isRTCHardware(); 
-
     json["rtc_needs_sync"] = rtcNeedsSynchronization();
     json["rtc_battery_issue"] = isBatteryIssueDetected();
-
-    // json["rtc_info"] = getRTCInfo();
     json["free_heap"] = ESP.getFreeHeap();
     json["uptime"] = millis();
     
-    // 🔄 UPDATED: Dynamic device ID and credentials info
+    // ============================================
+    // DEVICE INFO
+    // ============================================
 #if MODE_PRODUCTION
     json["device_id"] = getDeviceID();
     json["credentials_source"] = areCredentialsLoaded() ? "FRAM" : "FALLBACK";
     json["system_mode"] = "PRODUCTION";
-    json["vps_url"] = getVPSURL();  // 🆕 NEW: Show current VPS URL
-
-    json["authentication_enabled"] = areCredentialsLoaded();  // 🆕 NEW
+    json["vps_url"] = getVPSURL();
+    json["authentication_enabled"] = areCredentialsLoaded();
     
     if (!areCredentialsLoaded()) {
         json["setup_required"] = true;
@@ -155,7 +171,7 @@ void handleStatus(AsyncWebServerRequest* request) {
     json["credentials_source"] = "HARDCODED";
     json["system_mode"] = "PROGRAMMING";
     json["vps_url"] = VPS_URL;
-    json["authentication_enabled"] = false;  // Programming mode bypasses auth
+    json["authentication_enabled"] = false;
 #endif
     
     String response;

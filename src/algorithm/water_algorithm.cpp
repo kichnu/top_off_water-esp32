@@ -986,7 +986,109 @@ bool WaterAlgorithm::resetDailyVolume() {
     return true;
 }
 
+// ===============================================
+// UI STATUS FUNCTIONS - User-friendly descriptions
+// ===============================================
 
+String WaterAlgorithm::getStateDescription() const {
+    switch (currentState) {
+        case STATE_IDLE:
+            return "IDLE - Waiting for sensors";
+            
+        case STATE_TRYB_1_WAIT:
+            return "Analyzing drain pattern...";
+            
+        case STATE_TRYB_1_DELAY:
+            return "Waiting before pump activation";
+            
+        case STATE_TRYB_2_PUMP:
+            return "Pump operating";
+            
+        case STATE_TRYB_2_VERIFY:
+            return "Verifying sensor response";
+            
+        case STATE_TRYB_2_WAIT_GAP2:
+            return "Measuring recovery time";
+            
+        case STATE_LOGGING:
+            return "Logging cycle data";
+            
+        case STATE_ERROR:
+            // Detailed error message
+            switch (lastError) {
+                case ERROR_DAILY_LIMIT:
+                    return "ERROR - Daily limit exceeded";
+                case ERROR_PUMP_FAILURE:
+                    return "ERROR - Pump failure (3 attempts failed)";
+                case ERROR_BOTH:
+                    return "ERROR - Multiple errors detected";
+                default:
+                    return "ERROR - Unknown error";
+            }
+            
+        case STATE_MANUAL_OVERRIDE:
+            return "Manual pump operation";
+            
+        default:
+            return "Unknown state";
+    }
+}
+
+uint32_t WaterAlgorithm::getRemainingSeconds() const {
+    uint32_t currentTime = getCurrentTimeSeconds();
+    uint32_t elapsed = 0;
+    uint32_t total = 0;
+    int32_t remaining = 0;
+    
+    switch (currentState) {
+        case STATE_IDLE:
+        case STATE_LOGGING:
+        case STATE_ERROR:
+        case STATE_MANUAL_OVERRIDE:
+            // No countdown for these states
+            return 0;
+            
+        case STATE_TRYB_1_WAIT:
+            // Waiting for second sensor (TIME_GAP_1_MAX)
+            elapsed = currentTime - stateStartTime;
+            if (elapsed >= TIME_GAP_1_MAX) {
+                return 0;
+            }
+            return TIME_GAP_1_MAX - elapsed;
+            
+        case STATE_TRYB_1_DELAY:
+            // Waiting from TRIGGER to pump start (TIME_TO_PUMP)
+            elapsed = currentTime - triggerStartTime;
+            if (elapsed >= TIME_TO_PUMP) {
+                return 0;
+            }
+            return TIME_TO_PUMP - elapsed;
+            
+        case STATE_TRYB_2_PUMP:
+            // Pump is running - return pump remaining time
+            // Use getPumpRemainingTime() from pump_controller
+            return getPumpRemainingTime();
+            
+        case STATE_TRYB_2_VERIFY:
+            // Waiting for sensors to respond (WATER_TRIGGER_MAX_TIME)
+            elapsed = currentTime - pumpStartTime;
+            if (elapsed >= WATER_TRIGGER_MAX_TIME) {
+                return 0;
+            }
+            return WATER_TRIGGER_MAX_TIME - elapsed;
+            
+        case STATE_TRYB_2_WAIT_GAP2:
+            // Waiting for TIME_GAP_2 measurement
+            elapsed = currentTime - stateStartTime;
+            if (elapsed >= TIME_GAP_2_MAX) {
+                return 0;
+            }
+            return TIME_GAP_2_MAX - elapsed;
+            
+        default:
+            return 0;
+    }
+}
 
 
 
