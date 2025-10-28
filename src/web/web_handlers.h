@@ -32,6 +32,7 @@ void handleGetStatistics(AsyncWebServerRequest *request);
 
 void handleGetDailyVolume(AsyncWebServerRequest *request);
 void handleResetDailyVolume(AsyncWebServerRequest *request);
+void handleSystemToggle(AsyncWebServerRequest *request);
 
 #endif
 

@@ -27,6 +27,7 @@ private:
     uint32_t pumpStartTime;
     uint32_t lastPumpTime;
     bool permission_log;
+    bool systemWasDisabled;
 
     bool waterFailDetected = false;
 
@@ -82,6 +83,9 @@ public:
     bool resetDailyVolume();
 
     uint32_t getCurrentTimeSeconds() const { return millis() / 1000; }
+
+    void handleSystemDisable();
+    bool isSystemDisabled() const;
 
     // Main algorithm update - call this from loop()
     void update();

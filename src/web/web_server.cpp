@@ -32,6 +32,7 @@
 
         server.on("/api/daily-volume", HTTP_GET, handleGetDailyVolume);
         server.on("/api/reset-daily-volume", HTTP_POST, handleResetDailyVolume);
+        server.on("/api/system-toggle", HTTP_GET | HTTP_POST, handleSystemToggle);
         
         // 404 handler
         server.onNotFound([](AsyncWebServerRequest* request) {

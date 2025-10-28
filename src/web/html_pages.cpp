@@ -4,7 +4,7 @@
 
 #if ENABLE_WEB_SERVER
 
-const char* LOGIN_HTML = R"rawliteral(
+const char *LOGIN_HTML = R"rawliteral(
 <!DOCTYPE html>
 <html>
   <head>
@@ -72,12 +72,12 @@ const char* LOGIN_HTML = R"rawliteral(
       .login-btn:hover {
         opacity: 0.9;
       }
-      .alert {
-        padding: 15px;
-        margin: 15px 0;
-        border-radius: 8px;
-        display: none;
-      }
+      // .alert {
+      //   padding: 15px;
+      //   margin: 15px 0;
+      //   border-radius: 8px;
+      //   display: none;
+      // }
       .alert.error {
         background: #f8d7da;
         color: #721c24;
@@ -179,7 +179,7 @@ const char* LOGIN_HTML = R"rawliteral(
 </html>
 )rawliteral";
 
-const char* DASHBOARD_HTML = R"rawliteral(
+const char *DASHBOARD_HTML = R"rawliteral(
 <!DOCTYPE html>
 <html>
   <head>
@@ -318,6 +318,18 @@ const char* DASHBOARD_HTML = R"rawliteral(
         padding: 15px;
       } */
 
+      .button.on-off.disabled{
+        background: #dc3545;
+        color: white;
+        padding: 15px 10px;
+  
+      }
+
+      .button.on-off.enabled{
+        background: #28a745;
+        color: white;
+      }
+
       .stats {
         font-weight: bold;
         font-size: 14px;
@@ -339,6 +351,7 @@ const char* DASHBOARD_HTML = R"rawliteral(
         width: 100%;
         margin-top: 10px;
         margin-bottom: 10px;
+        // position: relative;
       }
 
       .alert {
@@ -348,12 +361,11 @@ const char* DASHBOARD_HTML = R"rawliteral(
         border-radius: 5px;
         margin-top: 20px;
         margin-bottom: 10px;
-
-
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: bold;
+        // position: absolute:
       }
 
       @media (max-width: 600px) {
@@ -683,17 +695,13 @@ const char* DASHBOARD_HTML = R"rawliteral(
             class="button cycle"
             onclick="triggerNormalPump()"
           >
-            Manual Cycle
+            Manual Cycle (Max 60s)
           </button>
           <button id="stopBtn" class="button danger" onclick="stopPump()">
             Stop Pump
           </button>
-          <button
-            id="onOffBtn"
-            class="button on-off"
-            onclick="togglePumpGlobal()"
-          >
-            Pump ON
+          <button id="systemToggleBtn" class="button on-off" onclick="toggleSystemState()">
+            Normal Cycle ACTIVE
           </button>
         </div>
       </div>
@@ -820,7 +828,7 @@ const char* DASHBOARD_HTML = R"rawliteral(
           .catch(() => showNotification("Connection error", "error"))
           .finally(() => {
             btn.disabled = false;
-            btn.textContent = "Manual Cycle";
+            btn.textContent = "Manual Cycle (Max 60s)";
             updateStatus();
           });
       }
@@ -963,60 +971,73 @@ const char* DASHBOARD_HTML = R"rawliteral(
       }
 
       // Global pump control
-      let pumpGlobalEnabled = true;
+      // let pumpGlobalEnabled = true;
 
-      function loadPumpGlobalState() {
-        fetch("/api/pump-toggle")
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.success) {
-              pumpGlobalEnabled = data.enabled;
-              updatePumpToggleButton(data.enabled, data.remaining_seconds);
-            }
-          })
-          .catch((error) => console.error("Failed to load pump state:", error));
-      }
+      // function loadPumpGlobalState() {
+      //   fetch("/api/pump-toggle")
+      //     .then((response) => response.json())
+      //     .then((data) => {
+      //       if (data.success) {
+      //         pumpGlobalEnabled = data.enabled;
+      //         updatePumpToggleButton(data.enabled, data.remaining_seconds);
+      //       }
+      //     })
+      //     .catch((error) => console.error("Failed to load pump state:", error));
+      // }
 
-      function togglePumpGlobal() {
-        const btn = document.getElementById("onOffBtn");
+
+
+      function toggleSystemState() {
+        const btn = document.getElementById("systemToggleBtn");
+
+        if (!btn) {
+          console.error("systemToggleBtn not found!");
+          showNotification("Button not found in DOM", "error");
+          return;
+        }
+
         btn.disabled = true;
         btn.textContent = "Processing...";
 
-        fetch("/api/pump-toggle", { method: "POST" })
-          .then((response) => response.json())
+        console.log("toggleSystemState: Sending POST to /api/system-toggle");
+
+        fetch("/api/system-toggle", { method: "POST" })
+          .then((response) => {
+            console.log("toggleSystemState: Response status:", response.status);
+
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`);
+            }
+
+            return response.json();
+          })
           .then((data) => {
+            console.log("toggleSystemState: Response data:", data);
+
             if (data.success) {
-              pumpGlobalEnabled = data.enabled;
-              updatePumpToggleButton(data.enabled, data.remaining_seconds);
+              updateSystemToggleButton(data.system_disabled, data.remaining_seconds);
               showNotification(data.message, "success");
+
+              if (data.note) {
+                setTimeout(() => {
+                  showNotification(data.note, "success");
+                }, 2000);
+              }
             } else {
-              showNotification("Failed to toggle pump", "error");
+              showNotification("Failed to toggle system: " + (data.error || "Unknown error"), "error");
+              // Restore button state
+              loadSystemState();
             }
           })
           .catch((error) => {
-            showNotification("Network error", "error");
+            console.error("toggleSystemState: Network error:", error);
+            showNotification("Network error: " + error.message, "error");
+            // Restore button state
+            loadSystemState();
           })
           .finally(() => {
             btn.disabled = false;
           });
-      }
-
-      function updatePumpToggleButton(enabled, remainingSeconds) {
-        const btn = document.getElementById("onOffBtn");
-
-        if (enabled) {
-          btn.textContent = "Pump ON";
-          btn.className = "button on-off enabled";
-          btn.style.backgroundColor = "#27ae60";
-        } else {
-          const minutes = Math.floor(remainingSeconds / 60);
-          const seconds = remainingSeconds % 60;
-          btn.textContent = `Pump OFF (${minutes}:${seconds
-            .toString()
-            .padStart(2, "0")})`;
-          btn.className = "button on-off disabled";
-          btn.style.backgroundColor = "#e74c3c";
-        }
       }
 
       // ============================================
@@ -1085,6 +1106,34 @@ const char* DASHBOARD_HTML = R"rawliteral(
           badge.classList.add("active-green");
           valueSpan.textContent = "OK";
         }
+      }
+
+      function loadSystemState() {
+        fetch("/api/system-toggle")
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+          })
+          .then((data) => {
+            console.log("loadSystemState: Data received:", data);
+
+            if (data.success) {
+              updateSystemToggleButton(data.system_disabled, data.remaining_seconds);
+
+              // Update process description if waiting for logging
+              if (data.waiting_for_logging) {
+                const desc = document.getElementById("processDescription");
+                if (desc) {
+                  desc.textContent = data.state_description + " (System pause requested)";
+                }
+              }
+            }
+          })
+          .catch((error) => {
+            console.error("Failed to load system state:", error);
+          });
       }
 
       // ============================================
@@ -1200,6 +1249,9 @@ const char* DASHBOARD_HTML = R"rawliteral(
 
             // Button states - based on pump_active (not algorithm state)
             const isRunning = data.pump_active;
+            const systemDisabled = data.system_disabled || false;
+
+
             document.getElementById("normalBtn").disabled = isRunning;
             document.getElementById("extendedBtn").disabled = isRunning;
             document.getElementById("stopBtn").disabled = !isRunning;
@@ -1223,8 +1275,12 @@ const char* DASHBOARD_HTML = R"rawliteral(
       }
 
       // Auto-refresh every 2 seconds
+
       setInterval(updateStatus, 2000);
       updateStatus(); // Initial load
+
+      setInterval(loadSystemState, 2000);
+      loadSystemState(); // Initial load
 
       // Statistics management
       function loadStatistics() {
@@ -1250,6 +1306,34 @@ const char* DASHBOARD_HTML = R"rawliteral(
             document.getElementById("resetTime").textContent =
               "Connection error";
           });
+      }
+
+      // ============================================
+      // 🆕 SYSTEM TOGGLE BUTTON UPDATE
+      // ============================================
+
+      function updateSystemToggleButton(disabled, remainingSeconds) {
+        const btn = document.getElementById("systemToggleBtn");
+
+        if (!btn) {
+          console.error("systemToggleBtn not found in DOM!");
+          return;
+        }
+
+        if (disabled) {
+          // System PAUSED state
+          if (remainingSeconds > 0) {
+            const minutes = Math.floor(remainingSeconds / 60);
+            const seconds = remainingSeconds % 60;
+            btn.textContent = `Normal Cycle PAUSED (${minutes}:${seconds.toString().padStart(2, '0')})`;
+          } else {
+            btn.textContent = "Normal Cycle PAUSED";
+          }
+          btn.className = "button on-off disabled";
+        } else {
+          btn.textContent = "Normal Cycle ACTIVE";
+          btn.className = "button on-off enabled";
+        }
       }
 
       function resetStatistics() {
@@ -1351,15 +1435,14 @@ const char* DASHBOARD_HTML = R"rawliteral(
       }
 
       // Auto-update pump state every 30 seconds
-      setInterval(loadPumpGlobalState, 30000);
-
-      loadDailyVolume(); // 🆕 Load daily volume on page load
-
-      // Auto-refresh daily volume every 10 seconds
+      // setInterval(loadPumpGlobalState, 30000);
+      
       setInterval(loadDailyVolume, 10000);
-
+      
       loadVolumePerSecond();
       loadStatistics();
+      loadDailyVolume();
+      loadSystemState();
 
     </script>
   </body>
@@ -1367,12 +1450,14 @@ const char* DASHBOARD_HTML = R"rawliteral(
 
 )rawliteral";
 
-String getLoginHTML() {
-    return String(LOGIN_HTML);
+String getLoginHTML()
+{
+  return String(LOGIN_HTML);
 }
 
-String getDashboardHTML() {
-    return String(DASHBOARD_HTML);
-} 
+String getDashboardHTML()
+{
+  return String(DASHBOARD_HTML);
+}
 
 #endif // ENABLE_WEB_SERVER

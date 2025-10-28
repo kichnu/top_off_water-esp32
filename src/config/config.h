@@ -26,6 +26,10 @@ extern bool pumpGlobalEnabled;
 extern unsigned long pumpDisabledTime;
 extern const unsigned long PUMP_AUTO_ENABLE_MS;
 
+extern bool systemDisableRequested;
+extern unsigned long systemDisabledTime;
+extern const unsigned long SYSTEM_AUTO_ENABLE_MS;
+
 
 // Stałe mogą być tutaj
 const unsigned long SESSION_TIMEOUT_MS = 1800000; 
@@ -35,13 +39,17 @@ const int MAX_FAILED_ATTEMPTS = 10;
 const unsigned long BLOCK_DURATION_MS = 60000;
 
 struct PumpSettings {
-    uint16_t manualCycleSeconds = 10;
+    uint16_t manualCycleSeconds = 60;
     uint16_t calibrationCycleSeconds = 30;
     float volumePerSecond = 1.0;
     bool autoModeEnabled = true;
 };
 
 extern PumpSettings currentPumpSettings;
+
+void setSystemState(bool enabled);
+void checkSystemAutoEnable();
+bool isSystemDisabled();
 
 // Functions
 void checkPumpAutoEnable();

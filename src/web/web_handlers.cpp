@@ -134,6 +134,8 @@ void handleStatus(AsyncWebServerRequest* request) {
     // ============================================
     json["state_description"] = waterAlgorithm.getStateDescription();
     json["remaining_seconds"] = waterAlgorithm.getRemainingSeconds();
+
+    json["system_disabled"] = isSystemDisabled();
     
     // ============================================
     // EXISTING STATUS FIELDS (bez zmian)
@@ -450,5 +452,99 @@ void handleResetDailyVolume(AsyncWebServerRequest* request) {
     }
 }
 
+// ========================================
+// 🆕 NEW: SYSTEM DISABLE/ENABLE HANDLER
+// ========================================
+
+void handleSystemToggle(AsyncWebServerRequest* request) {
+    if (!checkAuthentication(request)) {
+        request->send(401, "text/plain", "Unauthorized");
+        return;
+    }
+    
+    if (request->method() == HTTP_GET) {
+        // ============================================
+        // GET: Return current system state
+        // ============================================
+        JsonDocument json;
+        json["success"] = true;
+        json["system_disabled"] = systemDisableRequested;
+        
+        if (systemDisableRequested && systemDisabledTime > 0) {
+            unsigned long elapsed = millis() - systemDisabledTime;
+            unsigned long remaining = 0;
+            
+            if (elapsed < SYSTEM_AUTO_ENABLE_MS) {
+                remaining = (SYSTEM_AUTO_ENABLE_MS - elapsed) / 1000;
+            }
+            
+            json["remaining_seconds"] = remaining;
+        } else {
+            json["remaining_seconds"] = 0;
+        }
+        
+        json["current_state"] = waterAlgorithm.getStateString();
+        json["state_description"] = waterAlgorithm.getStateDescription();
+        json["waiting_for_logging"] = (waterAlgorithm.getState() == STATE_LOGGING);
+        json["in_error"] = (waterAlgorithm.getState() == STATE_ERROR);
+        
+        String response;
+        serializeJson(json, response);
+        request->send(200, "application/json", response);
+        
+    } else if (request->method() == HTTP_POST) {
+        // ============================================
+        // POST: Toggle system state
+        // ============================================
+        
+        // 🔧 FIX: Inline logic - clear and explicit
+        bool wasDisabled = systemDisableRequested;
+        bool shouldDisable = !wasDisabled;  // Toggle
+        
+        LOG_INFO("System toggle: was=%s, will be=%s", 
+                 wasDisabled ? "DISABLED" : "ENABLED",
+                 shouldDisable ? "DISABLED" : "ENABLED");
+        
+        // Set new state directly
+        if (shouldDisable) {
+            // DISABLE system
+            systemDisableRequested = true;
+            systemDisabledTime = millis();
+            LOG_INFO("🛑 System disable requested via web");
+        } else {
+            // ENABLE system
+            systemDisableRequested = false;
+            systemDisabledTime = 0;
+            LOG_INFO("✅ System enabled via web");
+        }
+        
+        // Build response
+        JsonDocument json;
+        json["success"] = true;
+        json["system_disabled"] = systemDisableRequested;
+        
+        if (systemDisableRequested) {
+            json["message"] = "System will pause at safe point (30min timeout)";
+            json["remaining_seconds"] = SYSTEM_AUTO_ENABLE_MS / 1000;
+            
+            if (waterAlgorithm.getState() == STATE_LOGGING) {
+                json["note"] = "Waiting for data logging to complete...";
+            } else {
+                json["note"] = "System paused in IDLE state";
+            }
+            
+        } else {
+            json["message"] = "System enabled - normal operation resumed";
+            json["remaining_seconds"] = 0;
+        }
+        
+        String response;
+        serializeJson(json, response);
+        LOG_INFO("System toggle response: system_disabled=%s", 
+                 systemDisableRequested ? "true" : "false");
+        request->send(200, "application/json", response);
+    }
+}
 
 #endif // ENABLE_WEB_SERVER
+

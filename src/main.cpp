@@ -198,6 +198,7 @@ void loop() {
     updateWaterSensors();
     waterAlgorithm.update();
     checkWaterSensors();
+    checkSystemAutoEnable();
     checkPumpAutoEnable();
 
     // Update other systems every 100ms
@@ -208,7 +209,8 @@ void loop() {
         updateWiFi();
         
         // Check for auto pump trigger
-        if (currentPumpSettings.autoModeEnabled && shouldActivatePump() && !isPumpActive()) {
+        if (currentPumpSettings.autoModeEnabled && 
+            !isSystemDisabled() && shouldActivatePump() && !isPumpActive()) {
             Serial.println("Auto pump triggered - water level low");
             triggerPump(currentPumpSettings.manualCycleSeconds, "AUTO_PUMP");
         }

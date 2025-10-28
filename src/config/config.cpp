@@ -33,6 +33,10 @@ bool pumpGlobalEnabled = true;  // Default ON
 unsigned long pumpDisabledTime = 0;
 const unsigned long PUMP_AUTO_ENABLE_MS = 30 * 60 * 1000; // 30 minutes
 
+bool systemDisableRequested = false;
+unsigned long systemDisabledTime = 0;
+const unsigned long SYSTEM_AUTO_ENABLE_MS = 30 * 60 * 1000; // 30 minutes
+
 PumpSettings currentPumpSettings;
 
 // ================= FRAM Storage Functions =================
@@ -85,4 +89,35 @@ void setPumpGlobalState(bool enabled) {
         pumpDisabledTime = 0;
         LOG_INFO("Pump globally enabled");
     }
+}
+
+// ================= 🆕 NEW: System State Control =================
+
+void setSystemState(bool enabled) {
+    if (!enabled) {
+        systemDisableRequested = true;
+        systemDisabledTime = millis();
+        LOG_INFO("🛑 System disable requested - will pause at safe point");
+        LOG_INFO("System will auto-enable in 30 minutes");
+    } else {
+        systemDisableRequested = false;
+        systemDisabledTime = 0;
+        LOG_INFO("✅ System manually enabled");
+    }
+}
+
+void checkSystemAutoEnable() {
+    if (systemDisableRequested && systemDisabledTime > 0) {
+        unsigned long elapsed = millis() - systemDisabledTime;
+        
+        if (elapsed >= SYSTEM_AUTO_ENABLE_MS) {
+            systemDisableRequested = false;
+            systemDisabledTime = 0;
+            LOG_INFO("✅ System auto-enabled after 30 minutes");
+        }
+    }
+}
+
+bool isSystemDisabled() {
+    return systemDisableRequested;
 }
